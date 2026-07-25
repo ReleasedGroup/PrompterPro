@@ -17,6 +17,7 @@ node_modules/
 dist/
 coverage/
 .vite/
+.models/
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs

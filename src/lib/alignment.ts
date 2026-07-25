@@ -109,7 +109,7 @@ export function alignTranscript(
   transcript: string,
   currentIndex: number,
 ): AlignmentResult {
-  const spoken = wordsFromText(transcript).slice(-14);
+  const spoken = wordsFromText(transcript).slice(-12);
   const safeCursor = Math.min(Math.max(currentIndex, 0), scriptWords.length);
 
   if (spoken.length === 0 || scriptWords.length === 0) {

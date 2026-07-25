@@ -48,8 +48,11 @@ recording and lets Studio devote most of the screen to eye-line and readability.
 ## Voice-following behavior
 
 - Matching is local and bounded around the current prompt position.
+- Streaming recognition runs in sherpa-onnx on the same computer; microphone
+  samples and transcripts never leave the device.
 - Punctuation, capitalization, and minor filler words do not matter.
 - A short fuzzy match advances the cursor.
+- Large forward jumps require two consistent recognition results.
 - Only finalized unmatched phrases count toward off-script status, preventing
   interim recognition guesses from pausing the prompt.
 - A match slightly behind or ahead of the cursor resumes following.
@@ -71,6 +74,8 @@ recording and lets Studio devote most of the screen to eye-line and readability.
 - Script library: local browser storage.
 - Video/audio: local browser memory plus a short-lived local temporary file when
   MP4 conversion is required.
+- Speech following: microphone PCM travels only over loopback to the local
+  sherpa-onnx engine; transcripts remain in memory on this computer.
 - AI input: topic, audience, tone, duration, and key points only.
 - Never sent to AI: camera, microphone, transcript, recording, or library.
 - Recording overlay: UI-only and absent from the saved raw media stream.
