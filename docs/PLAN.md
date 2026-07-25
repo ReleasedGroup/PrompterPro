@@ -17,6 +17,7 @@ Included:
 - AI draft generator through a server-side OpenAI call.
 - Selectable camera/microphone preview and raw recording.
 - Speech-following prompt with off-script pause/resume.
+- Offline streaming sherpa-onnx recognition over a loopback-only audio path.
 - Manual prompt controls, font sizing, and mirroring.
 - Local MP4 finalization, review, and save.
 - Installable PWA configuration.
@@ -36,7 +37,7 @@ Release gate:
 - Input levels, resolution, frame rate, and microphone monitoring.
 - Recording history and safe recovery after a crash.
 - Import/export scripts and keyboard/remote control.
-- Local transcription option with explicit privacy controls.
+- Additional downloadable speech models and language selection.
 - Package Windows with Tauri if Microsoft Store/native installer distribution is
   required.
 - Add telemetry only with consent and never capture script/media contents.
@@ -73,7 +74,8 @@ Release gate:
 
 - Unit: normalization, fuzzy alignment, cursor bounds, resumption, repeated text.
 - Component: script CRUD, generation errors, studio state transitions.
-- Browser: device denial, unsupported speech, record/stop/download.
+- Browser: device denial, missing local model, speech-engine disconnect,
+  record/stop/download.
 - Hardware: multiple cameras/mics, Bluetooth devices, 720p/1080p, long takes.
 - Platform: Edge/Chrome Windows first; Safari/iOS and Android only after native
   adapter decisions.

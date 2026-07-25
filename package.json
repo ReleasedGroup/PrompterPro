@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "concurrently -k -n API,WEB -c cyan,magenta \"tsx watch server/index.ts\" \"vite\"",
     "build": "tsc -b && vite build",
+    "speech:model": "node scripts/install-speech-model.mjs",
+    "speech:smoke": "tsx scripts/smoke-speech.ts",
     "start": "tsx server/index.ts --production",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -18,13 +20,16 @@
     "lucide-react": "^0.468.0",
     "openai": "^6.3.0",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "sherpa-onnx-node": "^1.13.4",
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
     "@types/node": "^24.3.0",
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",
+    "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^5.0.2",
     "concurrently": "^9.2.1",
     "tsx": "^4.20.5",

@@ -138,7 +138,11 @@ export function Studio({
   const recordingUrlRef = useRef("");
   const explicitDeviceSelectionRef = useRef(false);
   const isRecording = studioState === "recording";
-  const follower = useSpeechFollower(script.body, isRecording);
+  const follower = useSpeechFollower(
+    script.body,
+    isRecording,
+    streamRef.current,
+  );
   const resetFollower = follower.reset;
   const movePrompt = follower.move;
 
@@ -775,7 +779,9 @@ export function Studio({
             <small>
               {follower.lastHeard
                 ? `Heard “${follower.lastHeard.slice(-64)}”`
-                : "The recording never pauses"}
+                : follower.errorMessage
+                  ? follower.errorMessage
+                  : "The recording never pauses"}
             </small>
           </div>
         </div>

@@ -20,7 +20,8 @@ flowchart LR
   MP4 -->|"Yes"| FILE["MP4 with video/audio"]
   MP4 -->|"No"| FFMPEG["Local FFmpeg conversion"]
   FFMPEG --> FILE
-  U --> STT["Browser speech recognition"]
+  U --> PCM["AudioWorklet PCM"]
+  PCM -->|"Loopback WebSocket"| STT["Local sherpa-onnx"]
   STT --> ALIGN["Bounded fuzzy alignment"]
   ALIGN --> OVERLAY["Prompt overlay"]
   UI --> API["Local Node API"]
@@ -37,8 +38,10 @@ original `MediaStream`, not a canvas composition, so the overlay is not recorded
 - `src/lib/alignment.ts`: pure normalization, tokenization, and bounded fuzzy
   matching. The prompt renderer uses the same token stream so display and
   alignment indices cannot drift on hyphenated or punctuated words.
-- `src/hooks/useSpeechFollower.ts`: browser speech-recognition lifecycle and
-  prompt follow/off-script state.
+- `server/localSpeech.ts`: loopback WebSocket and streaming sherpa-onnx
+  recognizer lifecycle.
+- `src/hooks/useSpeechFollower.ts`: microphone PCM transport and prompt
+  follow/off-script state.
 - `src/hooks/useLocalScripts.ts`: local persistence and CRUD.
 - `src/components/Studio.tsx`: media device and recorder state machine.
 - `src/components/TeleprompterOverlay.tsx`: prompt rendering, eye-line, and
@@ -56,26 +59,30 @@ the file for review/save, and removes its temporary working directory.
 
 ## Alignment approach
 
-Speech recognition emits interim and final text. For each update:
+The browser uses an `AudioWorklet` to copy mono PCM from the recording's
+existing microphone track. It sends those frames only to `/api/speech` on the
+loopback Prompter server. sherpa-onnx resamples to 16 kHz, decodes incrementally,
+and returns partial and endpoint-finalized text over the same WebSocket. The
+small English Zipformer model is installed once with `npm run speech:model` and
+is ignored by Git.
+
+For each recognition update:
 
 1. Normalize words to lowercase alphanumeric tokens.
-2. Take the most recent phrase window.
+2. Take the most recent 12-word phrase window.
 3. Compare it with candidate windows from a small range behind and ahead of the
    current script cursor.
 4. Score candidates with ordered token similarity (LCS), exact phrase bonus,
    and proximity preference.
 5. Advance only above a confidence threshold.
-6. Use interim text for responsive advancement, but count only finalized
+6. Require two consistent recognition results before a large forward jump.
+7. Use partial text for responsive advancement, but count only finalized
    unmatched phrases toward off-script status.
-7. Resume immediately when nearby script text matches again; silence alone does
+8. Resume immediately when nearby script text matches again; silence alone does
    not move the cursor or stop recording.
 
-Previously finalized recognition entries are excluded from each new match
-decision. Web Speech retains them in its result list, but replaying them would
-mask later off-script speech.
-
-This is intentionally deterministic and local. It avoids uploading a live
-transcript and is fast enough to run on every recognition event.
+Alignment is deterministic and local. Prompt movement uses smooth scrolling,
+with reduced-motion preferences respected.
 
 ## AI generation
 
@@ -96,7 +103,7 @@ automatically saved over another script.
 | Windows shell | Installed Edge PWA | Tauri if native distribution is needed |
 | iOS/Android shell | Browser/PWA exploration | Capacitor |
 | Recording | `MediaRecorder` | Capacitor/native recorder |
-| Speech recognition | Edge/Chrome recognition | Native STT or on-device Whisper |
+| Speech recognition | Local sherpa-onnx through loopback | Native sherpa-onnx adapter |
 | Script storage | `localStorage` | SQLite with migration |
 | Files | Browser download | Native file picker/media library |
 | AI | Local Node API | Hosted authenticated API |
@@ -109,8 +116,9 @@ before promising equivalent background behavior or codec support.
 - API key only in ignored `.env.local`, never bundled into client code.
 - API body limit and field-length validation.
 - Media requires an explicit user gesture and browser permission.
-- No transcript or recording leaves the device in the MVP. MP4 conversion uses
-  the loopback API and a short-lived local temporary directory.
+- No microphone sample, transcript, or recording leaves the device in the MVP.
+  Speech recognition and MP4 conversion use only the loopback API; conversion
+  uses a short-lived local temporary directory.
 - Object URLs are revoked when replaced to prevent memory leaks.
 - Every route out of Studio uses the same recording-aware confirmation guard,
   preventing navigation from silently discarding an active take.
@@ -119,8 +127,10 @@ before promising equivalent background behavior or codec support.
 
 ## Known MVP constraints
 
-- Browser speech recognition availability and quality vary by browser/locale.
-- Browser recognition may use the browser vendor's speech service.
+- The bundled setup model recognizes English only and adds about 130 MB to a
+  local installation.
+- Recognition speed and quality depend on the Windows computer's CPU and
+  microphone.
 - Long recordings consume memory until stopped and downloaded.
 - MP4 fallback conversion briefly uses additional local disk, CPU, and memory.
 - Scripts do not yet sync across devices or users.

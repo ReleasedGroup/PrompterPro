@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 import { tokenizeScript, wordsFromText } from "../src/lib/alignment";
-import { collectRecognitionUpdate } from "../src/lib/speechResults";
 import {
   allowStudioExit,
   RECORDING_EXIT_MESSAGE,
@@ -25,36 +24,6 @@ describe("PR #1 review fixes", () => {
       "off",
       "script",
     ]);
-  });
-
-  it("excludes an old finalized phrase from a new recognition decision", () => {
-    const processed = new Set([0]);
-    const update = collectRecognitionUpdate(
-      [
-        { transcript: "welcome to prompter", isFinal: true },
-        { transcript: "the weather is unrelated", isFinal: true },
-      ],
-      1,
-      processed,
-    );
-
-    expect(update).toEqual({
-      heard: "the weather is unrelated",
-      newlyFinalized: 1,
-    });
-    expect(processed).toEqual(new Set([0, 1]));
-  });
-
-  it("does not count repeated delivery of the same final result twice", () => {
-    const processed = new Set<number>();
-    const results = [{ transcript: "new finalized words", isFinal: true }];
-
-    expect(
-      collectRecognitionUpdate(results, 0, processed).newlyFinalized,
-    ).toBe(1);
-    expect(
-      collectRecognitionUpdate(results, 0, processed).newlyFinalized,
-    ).toBe(0);
   });
 
   it("guards Studio exit only while a recording is active", () => {

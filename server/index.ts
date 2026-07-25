@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -8,6 +9,10 @@ import { promisify } from "node:util";
 import dotenv from "dotenv";
 import express from "express";
 import OpenAI from "openai";
+import {
+  attachLocalSpeechServer,
+  getSpeechModelStatus,
+} from "./localSpeech.js";
 
 const currentFile = fileURLToPath(import.meta.url);
 const serverDirectory = path.dirname(currentFile);
@@ -127,6 +132,15 @@ app.get("/api/health", (_request, response) => {
   response.json({ ok: true });
 });
 
+app.get("/api/speech/status", (_request, response) => {
+  const status = getSpeechModelStatus(rootDirectory);
+  response.json({
+    available: status.available,
+    model: status.available ? "sherpa-onnx Zipformer English 20M" : null,
+    setup: status.available ? null : "Run npm run speech:model.",
+  });
+});
+
 app.post("/api/scripts/generate", async (request, response) => {
   const body = request.body as GenerateBody;
   const topic = stringField(body.topic, 300);
@@ -196,7 +210,10 @@ if (production) {
   });
 }
 
-app.listen(port, "127.0.0.1", () => {
+const server = createServer(app);
+attachLocalSpeechServer(server, rootDirectory);
+
+server.listen(port, "127.0.0.1", () => {
   console.log(
     production
       ? `Prompter is running at http://127.0.0.1:${port}`

@@ -11,7 +11,7 @@ heard again, it resumes. The prompt overlay is never burned into the recording.
 - Generate a first draft from a topic, audience, tone, duration, and key points.
 - Preview camera and microphone before recording.
 - Record raw video and audio with the browser's `MediaRecorder`.
-- Follow spoken words with browser speech recognition in Edge or Chrome.
+- Follow spoken words with local, streaming sherpa-onnx recognition.
 - Pause prompt movement when speech leaves the script without pausing recording.
 - Review and save every finished take as an MP4 with H.264 video and AAC audio.
 - Install the app as a PWA on Windows.
@@ -22,11 +22,14 @@ Requirements: Node.js 20+ and current Microsoft Edge or Google Chrome.
 
 ```powershell
 npm.cmd install
+npm.cmd run speech:model
 npm.cmd run dev
 ```
 
 Open `http://localhost:5173`. Allow camera and microphone access when prompted.
-The local API reads `OPENAI_API_KEY` from `.env.local`.
+The one-time model command downloads the 122 MB English Zipformer model into
+the ignored `.models` directory. Recognition then runs without internet access.
+The local API reads the optional `OPENAI_API_KEY` from `.env.local`.
 
 For a production-like local run:
 
@@ -42,17 +45,24 @@ Then open `http://localhost:8787`.
 ```powershell
 npm.cmd test
 npm.cmd run typecheck
+npm.cmd run speech:smoke
 npm.cmd run build
 ```
+
+The speech smoke test uses the downloaded model and its bundled reference audio
+to exercise the same loopback WebSocket used by Studio.
 
 ## Browser support
 
 The complete MVP is targeted at current Edge and Chrome on Windows. The app
 records native MP4 when available; otherwise the local API converts the
 browser's WebM take to MP4 with its bundled FFmpeg binary. Speech-following
-requires the browser speech-recognition API; if it is unavailable, recording
-still works and the prompt can be moved with the on-screen controls or arrow
-keys.
+streams PCM only to the Prompter API at `127.0.0.1`, where sherpa-onnx performs
+recognition. If the local model is not installed, recording still works and the
+prompt can be moved with the on-screen controls or arrow keys.
+
+Set `SHERPA_ONNX_MODEL_DIR` to use the same model from another location, or
+`SHERPA_ONNX_THREADS` to choose 1–4 CPU inference threads.
 
 ## Product documentation
 
@@ -63,7 +73,9 @@ keys.
 ## Privacy
 
 Scripts are stored locally in browser storage. Camera and microphone media stay
-on this computer. A WebM take may pass through the local API at
-`127.0.0.1` solely for MP4 conversion and is removed from its temporary folder
-after export. Only the AI generation form is sent to OpenAI; camera, microphone,
-recordings, transcripts, and the script library are not.
+on this computer. Microphone samples and transcripts used for prompt following
+travel only over the loopback interface to the local sherpa-onnx engine. A WebM
+take may pass through the same local API for MP4 conversion and is removed from
+its temporary folder after export. Only the optional AI generation form is sent
+to OpenAI; camera, microphone, recordings, transcripts, and the script library
+are not.
