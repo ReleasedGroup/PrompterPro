@@ -5,6 +5,7 @@ import { Brand } from "./components/Brand";
 import { ScriptsWorkspace } from "./components/ScriptsWorkspace";
 import { Studio } from "./components/Studio";
 import { useLocalScripts } from "./hooks/useLocalScripts";
+import { allowStudioExit } from "./lib/studioNavigation";
 import type { WorkspaceView } from "./types";
 
 export default function App() {
@@ -21,6 +22,7 @@ export default function App() {
     scripts[0]?.id ?? null,
   );
   const [showGenerator, setShowGenerator] = useState(false);
+  const [studioRecording, setStudioRecording] = useState(false);
 
   const activeScript = activeId ? byId.get(activeId) ?? null : null;
 
@@ -33,6 +35,16 @@ export default function App() {
   function openStudio(id: string) {
     setActiveId(id);
     setView("studio");
+  }
+
+  function openScripts() {
+    if (
+      view === "studio" &&
+      !allowStudioExit(studioRecording, (message) => window.confirm(message))
+    ) {
+      return;
+    }
+    setView("scripts");
   }
 
   function removeScript(id: string) {
@@ -50,7 +62,7 @@ export default function App() {
         <nav aria-label="Primary navigation">
           <button
             className={view === "scripts" ? "active" : ""}
-            onClick={() => setView("scripts")}
+            onClick={openScripts}
           >
             <Library size={17} />
             Scripts
@@ -71,7 +83,11 @@ export default function App() {
       </header>
 
       {view === "studio" && activeScript ? (
-        <Studio script={activeScript} onBack={() => setView("scripts")} />
+        <Studio
+          script={activeScript}
+          onBack={openScripts}
+          onRecordingChange={setStudioRecording}
+        />
       ) : (
         <ScriptsWorkspace
           scripts={scripts}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import type { FollowStatus } from "../hooks/useSpeechFollower";
+import { tokenizeScript } from "../lib/alignment";
 
 interface TeleprompterOverlayProps {
   script: string;
@@ -9,10 +10,6 @@ interface TeleprompterOverlayProps {
   mirrored: boolean;
 }
 
-function segmentWords(text: string): string[] {
-  return text.match(/\S+/g) ?? [];
-}
-
 export function TeleprompterOverlay({
   script,
   currentIndex,
@@ -20,7 +17,7 @@ export function TeleprompterOverlay({
   fontSize,
   mirrored,
 }: TeleprompterOverlayProps) {
-  const words = useMemo(() => segmentWords(script), [script]);
+  const words = useMemo(() => tokenizeScript(script), [script]);
   const activeRef = useRef<HTMLSpanElement | null>(null);
 
   useEffect(() => {
@@ -53,11 +50,11 @@ export function TeleprompterOverlay({
                   : "upcoming";
             return (
               <span
-                key={`${index}-${word}`}
+                key={`${index}-${word.normalized}`}
                 ref={index === currentIndex ? activeRef : null}
                 className={`prompt-word ${state}`}
               >
-                {word}{" "}
+                {word.display}
               </span>
             );
           })}

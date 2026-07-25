@@ -5,6 +5,11 @@ export interface AlignmentResult {
   candidateStart: number;
 }
 
+export interface ScriptWordToken {
+  display: string;
+  normalized: string;
+}
+
 const WORD_PATTERN = /[\p{L}\p{N}]+(?:['\u2019][\p{L}\p{N}]+)*/gu;
 
 export function normalizeWord(word: string): string {
@@ -14,10 +19,23 @@ export function normalizeWord(word: string): string {
     .match(WORD_PATTERN)?.join("") ?? "";
 }
 
+export function tokenizeScript(text: string): ScriptWordToken[] {
+  const matches = Array.from(text.matchAll(WORD_PATTERN));
+
+  return matches.map((match, index) => {
+    const wordStart = match.index;
+    const tokenStart = index === 0 ? 0 : wordStart;
+    const tokenEnd = matches[index + 1]?.index ?? text.length;
+
+    return {
+      display: text.slice(tokenStart, tokenEnd),
+      normalized: normalizeWord(match[0]),
+    };
+  });
+}
+
 export function wordsFromText(text: string): string[] {
-  return (text.match(WORD_PATTERN) ?? [])
-    .map(normalizeWord)
-    .filter(Boolean);
+  return tokenizeScript(text).map((token) => token.normalized);
 }
 
 function editDistance(left: string, right: string): number {
