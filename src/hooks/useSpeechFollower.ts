@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { alignTranscript, wordsFromText } from "../lib/alignment";
+import { collectRecognitionUpdate } from "../lib/speechResults";
 
 export type FollowStatus =
   | "idle"
@@ -88,31 +89,18 @@ export function useSpeechFollower(script: string, enabled: boolean) {
     };
 
     recognition.onresult = (event) => {
-      const recentStart = Math.max(0, event.results.length - 4);
-      const recentParts: string[] = [];
-      let newlyFinalized = 0;
-
-      for (
-        let index = recentStart;
-        index < event.results.length;
-        index += 1
-      ) {
-        const transcript = event.results[index][0]?.transcript.trim();
-        if (transcript) recentParts.push(transcript);
-      }
-
-      for (let index = 0; index < event.results.length; index += 1) {
-        const result = event.results[index];
-        if (
-          result.isFinal &&
-          !processedFinalResultsRef.current.has(index)
-        ) {
-          processedFinalResultsRef.current.add(index);
-          newlyFinalized += 1;
-        }
-      }
-
-      const heard = recentParts.join(" ").trim();
+      const snapshots = Array.from(
+        { length: event.results.length },
+        (_, index) => ({
+          transcript: event.results[index][0]?.transcript ?? "",
+          isFinal: event.results[index].isFinal,
+        }),
+      );
+      const { heard, newlyFinalized } = collectRecognitionUpdate(
+        snapshots,
+        event.resultIndex,
+        processedFinalResultsRef.current,
+      );
       if (!heard) return;
 
       const result = alignTranscript(scriptWords, heard, cursorRef.current);

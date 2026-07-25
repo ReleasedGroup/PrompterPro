@@ -35,7 +35,8 @@ original `MediaStream`, not a canvas composition, so the overlay is not recorded
 ## Modules
 
 - `src/lib/alignment.ts`: pure normalization, tokenization, and bounded fuzzy
-  matching. It is portable and unit-tested.
+  matching. The prompt renderer uses the same token stream so display and
+  alignment indices cannot drift on hyphenated or punctuated words.
 - `src/hooks/useSpeechFollower.ts`: browser speech-recognition lifecycle and
   prompt follow/off-script state.
 - `src/hooks/useLocalScripts.ts`: local persistence and CRUD.
@@ -68,6 +69,10 @@ Speech recognition emits interim and final text. For each update:
    unmatched phrases toward off-script status.
 7. Resume immediately when nearby script text matches again; silence alone does
    not move the cursor or stop recording.
+
+Previously finalized recognition entries are excluded from each new match
+decision. Web Speech retains them in its result list, but replaying them would
+mask later off-script speech.
 
 This is intentionally deterministic and local. It avoids uploading a live
 transcript and is fast enough to run on every recognition event.
@@ -107,6 +112,8 @@ before promising equivalent background behavior or codec support.
 - No transcript or recording leaves the device in the MVP. MP4 conversion uses
   the loopback API and a short-lived local temporary directory.
 - Object URLs are revoked when replaced to prevent memory leaks.
+- Every route out of Studio uses the same recording-aware confirmation guard,
+  preventing navigation from silently discarding an active take.
 - Long recordings currently remain in memory; chunked file writing is a
   post-MVP reliability requirement.
 

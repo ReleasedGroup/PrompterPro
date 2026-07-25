@@ -37,6 +37,7 @@ type StudioState =
 interface StudioProps {
   script: PrompterScript;
   onBack: () => void;
+  onRecordingChange: (isRecording: boolean) => void;
 }
 
 interface DevicePreferences {
@@ -103,7 +104,11 @@ async function makeMp4(recording: Blob): Promise<Blob> {
   return new Blob([converted], { type: "video/mp4" });
 }
 
-export function Studio({ script, onBack }: StudioProps) {
+export function Studio({
+  script,
+  onBack,
+  onRecordingChange,
+}: StudioProps) {
   const [initialDevicePreferences] = useState(loadDevicePreferences);
   const [studioState, setStudioState] = useState<StudioState>("setup");
   const [error, setError] = useState("");
@@ -408,18 +413,8 @@ export function Studio({ script, onBack }: StudioProps) {
   }, [attachPreview, resetFollower]);
 
   const handleBack = useCallback(() => {
-    if (isRecording) {
-      if (!window.confirm("Stop this recording and return to Scripts?")) return;
-      const recorder = recorderRef.current;
-      if (recorder?.state === "recording") {
-        recorder.ondataavailable = null;
-        recorder.onstop = null;
-        recorder.stop();
-        chunksRef.current = [];
-      }
-    }
     onBack();
-  }, [isRecording, onBack]);
+  }, [onBack]);
 
   useEffect(() => {
     attachPreview();
@@ -474,6 +469,11 @@ export function Studio({ script, onBack }: StudioProps) {
   useEffect(() => {
     if (isRecording) setDevicesOpen(false);
   }, [isRecording]);
+
+  useEffect(() => {
+    onRecordingChange(isRecording);
+    return () => onRecordingChange(false);
+  }, [isRecording, onRecordingChange]);
 
   useEffect(() => {
     if (studioState !== "countdown") return;
