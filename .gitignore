@@ -10,6 +10,12 @@
 *.userosscache
 *.sln.docstates
 *.env
+.env.local
+
+# Node / frontend build output
+node_modules/
+dist/
+coverage/
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
