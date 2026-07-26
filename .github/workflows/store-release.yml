@@ -71,15 +71,19 @@ jobs:
       - name: Exercise offline speech engine
         run: npm run speech:smoke
 
-      - name: Build unsigned MSIX
+      - name: Build unsigned multi-architecture MSIX bundle
         run: npm run package:windows
 
-      - name: Upload MSIX artifact
+      - name: Exercise ARM64 service sidecar
+        run: npm run speech:smoke:arm64
+
+      - name: Upload MSIX bundle artifact
         uses: actions/upload-artifact@v7
         with:
-          name: Prompter-${{ env.MS_STORE_VERSION }}-x64
-          path: out/store/*.msix
+          name: Prompter-${{ env.MS_STORE_VERSION }}-x64-arm64
+          path: out/store/*.msixbundle
           if-no-files-found: error
+          compression-level: 0
 
       - name: Install Microsoft Store CLI
         if: >-
@@ -125,5 +129,6 @@ jobs:
             --sellerId $env:SELLER_ID `
             --clientId $env:AZURE_AD_APPLICATION_CLIENT_ID `
             --clientSecret $env:AZURE_AD_APPLICATION_SECRET
-          $package = Get-ChildItem "out/store/*.msix" | Select-Object -First 1
+          $package = Get-ChildItem "out/store/*.msixbundle" |
+            Select-Object -First 1
           msstore publish $package.FullName -id $env:MS_STORE_PRODUCT_ID

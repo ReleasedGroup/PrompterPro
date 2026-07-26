@@ -1,5 +1,7 @@
 export interface StoreManifestValues {
+  architecture: "x64" | "arm64";
   identityName: string;
+  minimumWindowsVersion: string;
   publisher: string;
   publisherDisplayName: string;
   version: string;

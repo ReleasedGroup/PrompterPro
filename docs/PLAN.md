@@ -21,7 +21,8 @@ Included:
 - Manual prompt controls, font sizing, and mirroring.
 - Local MP4 finalization, review, and save.
 - Installable PWA configuration.
-- Microsoft Store-ready Electron shell, MSIX packaging and listing assets.
+- Microsoft Store-ready x64/ARM64 Electron shells, MSIX bundle packaging and
+  listing assets.
 - CI validation plus tagged Store update automation.
 - Unit tests for speech alignment plus build/type validation.
 

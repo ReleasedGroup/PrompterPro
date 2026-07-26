@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import { once } from "node:events";
 import path from "node:path";
 import {
@@ -14,6 +15,7 @@ const BACKGROUND_COLOR = "#0b0d0f";
 
 let mainWindow = null;
 let localServer = null;
+let localServerProcess = null;
 let appUrl = null;
 
 function isLoopbackUrl(value) {
@@ -58,6 +60,11 @@ async function startLocalServer() {
     ? path.join(process.resourcesPath, MODEL_DIRECTORY_NAME)
     : path.join(app.getAppPath(), ".models", MODEL_DIRECTORY_NAME);
 
+  if (app.isPackaged && process.arch === "arm64") {
+    await startArm64Sidecar();
+    return;
+  }
+
   const serverModule = await import(
     new URL("../dist-server/index.mjs", import.meta.url)
   );
@@ -69,6 +76,65 @@ async function startLocalServer() {
     throw new Error("Prompter could not reserve a local server port.");
   }
   appUrl = `http://127.0.0.1:${address.port}`;
+}
+
+async function startArm64Sidecar() {
+  const nodeExecutable = path.join(
+    process.resourcesPath,
+    "x64-sidecar",
+    "node.exe",
+  );
+  const serverEntry = path.join(
+    process.resourcesPath,
+    "app",
+    "dist-server",
+    "index.mjs",
+  );
+
+  localServerProcess = spawn(nodeExecutable, [serverEntry], {
+    env: process.env,
+    stdio: ["ignore", "pipe", "pipe", "ipc"],
+    windowsHide: true,
+  });
+  localServerProcess.stdout?.on("data", (data) => {
+    console.log(data.toString().trimEnd());
+  });
+  localServerProcess.stderr?.on("data", (data) => {
+    console.error(data.toString().trimEnd());
+  });
+
+  const port = await new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error("The ARM64 local service did not start in time."));
+    }, 30_000);
+
+    const finish = (callback) => (value) => {
+      clearTimeout(timeout);
+      callback(value);
+    };
+    localServerProcess.once(
+      "error",
+      finish((error) => reject(error)),
+    );
+    localServerProcess.once(
+      "exit",
+      finish((code) => {
+        reject(
+          new Error(`The ARM64 local service exited with code ${code}.`),
+        );
+      }),
+    );
+    localServerProcess.on("message", (message) => {
+      if (
+        message?.type === "prompter:server-ready" &&
+        Number.isInteger(message.port)
+      ) {
+        finish(resolve)(message.port);
+      }
+    });
+  });
+
+  appUrl = `http://127.0.0.1:${port}`;
 }
 
 async function createWindow() {
@@ -137,5 +203,8 @@ if (!hasSingleInstanceLock) {
   app.on("window-all-closed", () => app.quit());
   app.on("before-quit", () => {
     if (localServer?.listening) localServer.close();
+    if (localServerProcess && !localServerProcess.killed) {
+      localServerProcess.kill();
+    }
   });
 }

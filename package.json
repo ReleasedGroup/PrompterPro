@@ -15,6 +15,7 @@
     "desktop": "npm run build:desktop && electron .",
     "package:windows": "npm run build:desktop && node scripts/package-windows.mjs",
     "speech:model": "node scripts/install-speech-model.mjs",
+    "speech:smoke:arm64": "node scripts/smoke-arm64-sidecar.mjs",
     "speech:smoke": "tsx scripts/smoke-speech.ts",
     "start": "tsx server/index.ts --production",
     "test": "vitest run",
@@ -33,6 +34,7 @@
     "ws": "^8.21.0"
   },
   "devDependencies": {
+    "@electron/asar": "^4.2.1",
     "@electron/packager": "^20.0.4",
     "@microsoft/winappcli": "^0.5.0",
     "@types/express": "^5.0.3",

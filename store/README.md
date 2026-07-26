@@ -1,8 +1,14 @@
 # Microsoft Store release guide
 
-Prompter is packaged as an x64 Electron desktop application and then converted
-to an unsigned MSIX. Microsoft Store signs the accepted package during
-submission.
+Prompter is packaged as native x64 and ARM64 Electron desktop applications and
+then combined into an unsigned MSIX bundle. Microsoft Store signs the accepted
+bundle during submission.
+
+The ARM64 shell uses a bundled x64 Node sidecar through Windows 11's
+compatibility layer because the offline sherpa runtime and FFmpeg do not publish
+Windows ARM64 binaries. Camera UI and rendering remain native ARM64, while
+voice-following and MP4 fallback preserve the same local behaviour as x64.
+The Store bundle therefore targets Windows 11 for both architecture slices.
 
 ## One-time Partner Center setup
 
@@ -44,6 +50,7 @@ Use Node.js 22.12 or later on Windows:
 npm.cmd ci
 npm.cmd run speech:model
 npm.cmd run package:windows
+npm.cmd run speech:smoke:arm64
 ```
 
 For a Partner Center package, set the reserved identity first:
@@ -56,12 +63,13 @@ $env:MS_STORE_VERSION = "1.0.0"
 npm.cmd run package:windows
 ```
 
-The package is written to `out/store/`. The unsigned local-development identity
-is useful for validation but must not be submitted to Partner Center.
+The `Prompter_<version>_x64_arm64.msixbundle` file is written to `out/store/`.
+The unsigned local-development identity is useful for validation but must not
+be submitted to Partner Center.
 
 ## Automated releases
 
-The Store release workflow validates and uploads an MSIX artifact for a
+The Store release workflow validates and uploads an MSIX bundle artifact for a
 `vMAJOR.MINOR.PATCH` tag or a manual run. Publishing is attempted for a tag, or
 when **Publish to Microsoft Store** is selected manually. Store identity
 variables enable the publish steps; missing authentication secrets then fail
@@ -73,4 +81,4 @@ Before a production release:
 - Verify camera, microphone, offline following, recording and MP4 export on a
   clean supported Windows computer.
 - Confirm that the tag's version is greater than the last Store submission.
-- Download and inspect the workflow's MSIX artifact.
+- Download and inspect both architectures in the workflow's MSIX bundle.
