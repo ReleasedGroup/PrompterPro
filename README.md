@@ -46,10 +46,11 @@ For the packaged desktop app:
 npm.cmd run desktop
 ```
 
-To create an unsigned x64 MSIX on Windows:
+To create an unsigned x64/ARM64 MSIX bundle on Windows:
 
 ```powershell
 npm.cmd run package:windows
+npm.cmd run speech:smoke:arm64
 ```
 
 See the [Microsoft Store release guide](store/README.md) for Partner Center

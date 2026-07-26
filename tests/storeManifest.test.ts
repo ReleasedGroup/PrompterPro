@@ -25,16 +25,31 @@ describe("Windows Store manifest", () => {
   it("renders every manifest token", () => {
     expect(
       renderStoreManifest(
-        '<Identity Name="__IDENTITY_NAME__" Publisher="__PUBLISHER__" Version="__VERSION__"/><Name>__PUBLISHER_DISPLAY_NAME__</Name>',
+        '<Identity Name="__IDENTITY_NAME__" Publisher="__PUBLISHER__" Version="__VERSION__" ProcessorArchitecture="__PROCESSOR_ARCHITECTURE__"/><Target MinVersion="__MIN_WINDOWS_VERSION__"/><Name>__PUBLISHER_DISPLAY_NAME__</Name>',
         {
+          architecture: "arm64",
           identityName: "ReleasedGroup.Prompter",
+          minimumWindowsVersion: "10.0.22000.0",
           publisher: "CN=Released Group",
           publisherDisplayName: "Released Group",
           version: "1.2.3",
         },
       ),
     ).toBe(
-      '<Identity Name="ReleasedGroup.Prompter" Publisher="CN=Released Group" Version="1.2.3.0"/><Name>Released Group</Name>',
+      '<Identity Name="ReleasedGroup.Prompter" Publisher="CN=Released Group" Version="1.2.3.0" ProcessorArchitecture="arm64"/><Target MinVersion="10.0.22000.0"/><Name>Released Group</Name>',
     );
+  });
+
+  it("rejects unsupported package architectures", () => {
+    expect(() =>
+      renderStoreManifest("__PROCESSOR_ARCHITECTURE__", {
+        architecture: "ia32" as "x64",
+        identityName: "ReleasedGroup.Prompter",
+        minimumWindowsVersion: "10.0.17763.0",
+        publisher: "CN=Released Group",
+        publisherDisplayName: "Released Group",
+        version: "1.2.3",
+      }),
+    ).toThrow(/x64 or arm64/);
   });
 });

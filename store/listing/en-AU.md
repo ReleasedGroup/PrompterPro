@@ -50,8 +50,7 @@ Productivity
 
 ## Minimum system requirements
 
-- Windows 10 version 1809 or later
-- 64-bit x64 processor
+- Windows 11 on an x64 or ARM64 processor
 - Camera and microphone for recording
 - Internet connection only for installation and optional online features
 

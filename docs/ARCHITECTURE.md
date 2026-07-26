@@ -52,9 +52,11 @@ original `MediaStream`, not a canvas composition, so the overlay is not recorded
 - `server/index.ts`: input validation, local MP4 conversion, and server-side
   OpenAI call.
 - `desktop/main.mjs`: hardened Electron window, media permissions and lifecycle
-  for the loopback Node service.
+  for the loopback Node service. The ARM64 shell starts a bundled x64 Node
+  sidecar under Windows 11 compatibility so the existing offline speech and
+  FFmpeg binaries remain available.
 - `scripts/package-windows.mjs`: Electron packaging, offline model inclusion and
-  unsigned MSIX creation.
+  unsigned x64/ARM64 MSIX bundle creation.
 
 ## Recording and MP4 export
 
@@ -107,7 +109,7 @@ automatically saved over another script.
 | Capability | MVP adapter | Future adapter |
 | --- | --- | --- |
 | UI/domain | React PWA | Shared React UI |
-| Windows shell | Electron/MSIX or installed Edge PWA | Shared Store release automation |
+| Windows shell | Electron/MSIX bundle or installed Edge PWA | Shared Store release automation |
 | iOS/Android shell | Browser/PWA exploration | Capacitor |
 | Recording | `MediaRecorder` | Capacitor/native recorder |
 | Speech recognition | Local sherpa-onnx through loopback | Native sherpa-onnx adapter |

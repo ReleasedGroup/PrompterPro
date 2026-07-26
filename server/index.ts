@@ -219,6 +219,10 @@ server.listen(port, "127.0.0.1", () => {
   const address = server.address();
   const activePort =
     address && typeof address !== "string" ? address.port : port;
+  process.send?.({
+    type: "prompter:server-ready",
+    port: activePort,
+  });
   console.log(
     production
       ? `Prompter is running at http://127.0.0.1:${activePort}`

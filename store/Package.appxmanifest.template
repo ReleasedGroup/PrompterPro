@@ -8,7 +8,7 @@
     Name="__IDENTITY_NAME__"
     Publisher="__PUBLISHER__"
     Version="__VERSION__"
-    ProcessorArchitecture="x64" />
+    ProcessorArchitecture="__PROCESSOR_ARCHITECTURE__" />
   <Properties>
     <DisplayName>Prompter</DisplayName>
     <PublisherDisplayName>__PUBLISHER_DISPLAY_NAME__</PublisherDisplayName>
@@ -17,7 +17,7 @@
   <Dependencies>
     <TargetDeviceFamily
       Name="Windows.Desktop"
-      MinVersion="10.0.17763.0"
+      MinVersion="__MIN_WINDOWS_VERSION__"
       MaxVersionTested="10.0.26100.0" />
   </Dependencies>
   <Resources>

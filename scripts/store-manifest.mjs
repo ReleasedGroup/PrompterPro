@@ -1,4 +1,5 @@
 const WINDOWS_VERSION_PATTERN = /^\d+(?:\.\d+){0,3}$/;
+const WINDOWS_ARCHITECTURES = new Set(["x64", "arm64"]);
 
 export function toWindowsVersion(version) {
   const numericVersion = version.split("-", 1)[0];
@@ -25,11 +26,19 @@ export function escapeXml(value) {
 }
 
 export function renderStoreManifest(template, values) {
+  if (!WINDOWS_ARCHITECTURES.has(values.architecture)) {
+    throw new Error(
+      `Store architecture "${values.architecture}" must be x64 or arm64.`,
+    );
+  }
+
   const replacements = {
     "__IDENTITY_NAME__": values.identityName,
     "__PUBLISHER__": values.publisher,
     "__PUBLISHER_DISPLAY_NAME__": values.publisherDisplayName,
     "__VERSION__": toWindowsVersion(values.version),
+    "__PROCESSOR_ARCHITECTURE__": values.architecture,
+    "__MIN_WINDOWS_VERSION__": values.minimumWindowsVersion,
   };
 
   let manifest = template;
