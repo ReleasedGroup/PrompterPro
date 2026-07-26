@@ -15,6 +15,8 @@
 # Node / frontend build output
 node_modules/
 dist/
+dist-server/
+out/
 coverage/
 .vite/
 .models/

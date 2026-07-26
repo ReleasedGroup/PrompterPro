@@ -21,12 +21,15 @@ Included:
 - Manual prompt controls, font sizing, and mirroring.
 - Local MP4 finalization, review, and save.
 - Installable PWA configuration.
+- Microsoft Store-ready Electron shell, MSIX packaging and listing assets.
+- CI validation plus tagged Store update automation.
 - Unit tests for speech alignment plus build/type validation.
 
 Release gate:
 
 - Verify the full flow manually in current Edge on a Windows machine with a real
   camera and microphone.
+- Verify the signed Store package on a clean supported Windows computer.
 - Make a 10-minute recording and check audio/video sync, memory, download, and
   playback.
 - Test scripted detours, filler words, repeated lines, and resumption.
@@ -38,8 +41,6 @@ Release gate:
 - Recording history and safe recovery after a crash.
 - Import/export scripts and keyboard/remote control.
 - Additional downloadable speech models and language selection.
-- Package Windows with Tauri if Microsoft Store/native installer distribution is
-  required.
 - Add telemetry only with consent and never capture script/media contents.
 
 ## Phase 3 — Mobile and macOS

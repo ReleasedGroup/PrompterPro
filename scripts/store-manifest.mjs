@@ -1,0 +1,43 @@
+const WINDOWS_VERSION_PATTERN = /^\d+(?:\.\d+){0,3}$/;
+
+export function toWindowsVersion(version) {
+  const numericVersion = version.split("-", 1)[0];
+  if (!WINDOWS_VERSION_PATTERN.test(numericVersion)) {
+    throw new Error(
+      `Store version "${version}" must contain one to four numeric parts.`,
+    );
+  }
+
+  const parts = numericVersion.split(".").map(Number);
+  if (parts.some((part) => part < 0 || part > 65_535)) {
+    throw new Error("Each Store version part must be between 0 and 65535.");
+  }
+
+  return [...parts, 0, 0, 0].slice(0, 4).join(".");
+}
+
+export function escapeXml(value) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+export function renderStoreManifest(template, values) {
+  const replacements = {
+    "__IDENTITY_NAME__": values.identityName,
+    "__PUBLISHER__": values.publisher,
+    "__PUBLISHER_DISPLAY_NAME__": values.publisherDisplayName,
+    "__VERSION__": toWindowsVersion(values.version),
+  };
+
+  let manifest = template;
+  for (const [token, value] of Object.entries(replacements)) {
+    manifest = manifest.replaceAll(token, escapeXml(value));
+  }
+  if (/__[A-Z_]+__/.test(manifest)) {
+    throw new Error("The Store manifest contains an unresolved token.");
+  }
+  return manifest;
+}
