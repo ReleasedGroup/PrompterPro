@@ -22,7 +22,9 @@ dotenv.config({ path: path.join(rootDirectory, ".env") });
 
 const app = express();
 const port = Number(process.env.PORT ?? 8787);
-const production = process.argv.includes("--production");
+const production =
+  process.argv.includes("--production") ||
+  process.env.PROMPTER_PRODUCTION === "1";
 const execFileAsync = promisify(execFile);
 const require = createRequire(import.meta.url);
 const ffmpegPath = require("ffmpeg-static") as string | null;
@@ -210,13 +212,16 @@ if (production) {
   });
 }
 
-const server = createServer(app);
+export const server = createServer(app);
 attachLocalSpeechServer(server, rootDirectory);
 
 server.listen(port, "127.0.0.1", () => {
+  const address = server.address();
+  const activePort =
+    address && typeof address !== "string" ? address.port : port;
   console.log(
     production
-      ? `Prompter is running at http://127.0.0.1:${port}`
-      : `Prompter API is running at http://127.0.0.1:${port}`,
+      ? `Prompter is running at http://127.0.0.1:${activePort}`
+      : `Prompter API is running at http://127.0.0.1:${activePort}`,
   );
 });

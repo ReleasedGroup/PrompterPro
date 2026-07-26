@@ -3,15 +3,18 @@
 ## Decision summary
 
 The MVP is a React/TypeScript progressive web app served with a small Node API.
-It targets current Edge and Chrome on Windows. Product logic is isolated behind
-browser-facing adapters so native shells can be added without rewriting the
-script library, alignment algorithm, or studio state model.
+It targets current Edge and Chrome on Windows and is wrapped by an Electron
+desktop shell for Microsoft Store distribution. Product logic is isolated
+behind browser-facing adapters so other native shells can be added without
+rewriting the script library, alignment algorithm, or studio state model.
 
 ## Runtime shape
 
 ```mermaid
 flowchart LR
   U["Presenter"] --> UI["React PWA"]
+  WIN["Electron / MSIX"] --> UI
+  WIN --> API
   UI --> LS["Local script store"]
   UI --> CAM["getUserMedia"]
   CAM --> PREVIEW["Muted preview"]
@@ -48,6 +51,10 @@ original `MediaStream`, not a canvas composition, so the overlay is not recorded
   current-word scrolling.
 - `server/index.ts`: input validation, local MP4 conversion, and server-side
   OpenAI call.
+- `desktop/main.mjs`: hardened Electron window, media permissions and lifecycle
+  for the loopback Node service.
+- `scripts/package-windows.mjs`: Electron packaging, offline model inclusion and
+  unsigned MSIX creation.
 
 ## Recording and MP4 export
 
@@ -100,7 +107,7 @@ automatically saved over another script.
 | Capability | MVP adapter | Future adapter |
 | --- | --- | --- |
 | UI/domain | React PWA | Shared React UI |
-| Windows shell | Installed Edge PWA | Tauri if native distribution is needed |
+| Windows shell | Electron/MSIX or installed Edge PWA | Shared Store release automation |
 | iOS/Android shell | Browser/PWA exploration | Capacitor |
 | Recording | `MediaRecorder` | Capacitor/native recorder |
 | Speech recognition | Local sherpa-onnx through loopback | Native sherpa-onnx adapter |

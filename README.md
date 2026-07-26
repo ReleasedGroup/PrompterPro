@@ -14,11 +14,11 @@ heard again, it resumes. The prompt overlay is never burned into the recording.
 - Follow spoken words with local, streaming sherpa-onnx recognition.
 - Pause prompt movement when speech leaves the script without pausing recording.
 - Review and save every finished take as an MP4 with H.264 video and AAC audio.
-- Install the app as a PWA on Windows.
+- Install the app as a PWA or packaged Microsoft Store desktop app on Windows.
 
 ## Run locally
 
-Requirements: Node.js 20+ and current Microsoft Edge or Google Chrome.
+Requirements: Node.js 22.12+ and current Microsoft Edge or Google Chrome.
 
 ```powershell
 npm.cmd install
@@ -40,6 +40,21 @@ npm.cmd start
 
 Then open `http://localhost:8787`.
 
+For the packaged desktop app:
+
+```powershell
+npm.cmd run desktop
+```
+
+To create an unsigned x64 MSIX on Windows:
+
+```powershell
+npm.cmd run package:windows
+```
+
+See the [Microsoft Store release guide](store/README.md) for Partner Center
+identity settings, automated releases, listing copy and submission checks.
+
 ## Validation
 
 ```powershell
@@ -47,6 +62,7 @@ npm.cmd test
 npm.cmd run typecheck
 npm.cmd run speech:smoke
 npm.cmd run build
+npm.cmd run build:desktop
 ```
 
 The speech smoke test uses the downloaded model and its bundled reference audio
@@ -54,12 +70,13 @@ to exercise the same loopback WebSocket used by Studio.
 
 ## Browser support
 
-The complete MVP is targeted at current Edge and Chrome on Windows. The app
-records native MP4 when available; otherwise the local API converts the
-browser's WebM take to MP4 with its bundled FFmpeg binary. Speech-following
-streams PCM only to the Prompter API at `127.0.0.1`, where sherpa-onnx performs
-recognition. If the local model is not installed, recording still works and the
-prompt can be moved with the on-screen controls or arrow keys.
+The complete MVP is targeted at the packaged Windows desktop app and current
+Edge or Chrome on Windows. The app records native MP4 when available; otherwise
+the local API converts the browser's WebM take to MP4 with its bundled FFmpeg
+binary. Speech-following streams PCM only to the Prompter API at `127.0.0.1`,
+where sherpa-onnx performs recognition. If the local model is not installed,
+recording still works and the prompt can be moved with the on-screen controls
+or arrow keys.
 
 Set `SHERPA_ONNX_MODEL_DIR` to use the same model from another location, or
 `SHERPA_ONNX_THREADS` to choose 1–4 CPU inference threads.
@@ -69,6 +86,8 @@ Set `SHERPA_ONNX_MODEL_DIR` to use the same model from another location, or
 - [Product and UX](docs/PRODUCT.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Delivery plan and roadmap](docs/PLAN.md)
+- [Microsoft Store release guide and listing](store/README.md)
+- [Privacy policy](store/PRIVACY.md)
 
 ## Privacy
 
