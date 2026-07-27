@@ -2,7 +2,7 @@
 
 ## Product name
 
-Prompter
+PrompterPro
 
 ## Short description
 
@@ -12,7 +12,7 @@ Record polished videos with an offline teleprompter that follows your voice.
 
 Stay on message without sounding scripted.
 
-Prompter keeps your words close to the camera while you record. As you speak,
+PrompterPro keeps your words close to the camera while you record. As you speak,
 the prompt follows along automatically. If you improvise, it waits; when you
 return to the script, it picks up from the right place.
 
@@ -30,7 +30,7 @@ Key features:
 - Review each take and save it as an MP4.
 - Keep scripts and recordings under your control on this device.
 
-Prompter is designed for presenters, educators, creators and teams who want to
+PrompterPro is designed for presenters, educators, creators and teams who want to
 record clear, natural delivery without a complicated production setup.
 
 The included speech model currently recognises English.

@@ -69,7 +69,7 @@ export function AIGenerator({ onClose, onGenerated }: AIGeneratorProps) {
         </div>
         <h2 id="generator-title">Turn an idea into something worth saying.</h2>
         <p className="muted">
-          Give Prompter the substance. You stay in control of every word.
+          Give PrompterPro the substance. You stay in control of every word.
         </p>
 
         <form onSubmit={handleSubmit} className="generator-form">

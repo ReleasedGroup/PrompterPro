@@ -225,7 +225,7 @@ server.listen(port, "127.0.0.1", () => {
   });
   console.log(
     production
-      ? `Prompter is running at http://127.0.0.1:${activePort}`
-      : `Prompter API is running at http://127.0.0.1:${activePort}`,
+      ? `PrompterPro is running at http://127.0.0.1:${activePort}`
+      : `PrompterPro API is running at http://127.0.0.1:${activePort}`,
   );
 });

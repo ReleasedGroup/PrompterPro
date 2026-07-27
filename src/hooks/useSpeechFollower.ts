@@ -198,7 +198,7 @@ export function useSpeechFollower(
         if (!disposed && !failureReported) {
           failureReported = true;
           setErrorMessage(
-            "The local speech engine could not be reached. Keep the Prompter API running.",
+            "The local speech engine could not be reached. Keep the PrompterPro API running.",
           );
           setStatus("error");
         }

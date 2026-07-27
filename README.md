@@ -1,6 +1,6 @@
-# Prompter
+# PrompterPro
 
-Prompter is a Windows-first, installable teleprompter MVP. It records raw
+PrompterPro is a Windows-first, installable teleprompter MVP. It records raw
 camera and microphone media while an on-screen script follows the speaker.
 If the speaker leaves the script, the prompt pauses; when matching speech is
 heard again, it resumes. The prompt overlay is never burned into the recording.
@@ -75,7 +75,7 @@ to exercise the same loopback WebSocket used by Studio.
 The complete MVP is targeted at the packaged Windows desktop app and current
 Edge or Chrome on Windows. The app records native MP4 when available; otherwise
 the local API converts the browser's WebM take to MP4 with its bundled FFmpeg
-binary. Speech-following streams PCM only to the Prompter API at `127.0.0.1`,
+binary. Speech-following streams PCM only to the PrompterPro API at `127.0.0.1`,
 where sherpa-onnx performs recognition. If the local model is not installed,
 recording still works and the prompt can be moved with the on-screen controls
 or arrow keys.

@@ -6,7 +6,7 @@ import {
 } from "../src/lib/alignment";
 
 const script = wordsFromText(
-  "Welcome to Prompter. Today we are going to make recording feel natural and calm. Take a breath and look at the camera.",
+  "Welcome to PrompterPro. Today we are going to make recording feel natural and calm. Take a breath and look at the camera.",
 );
 
 describe("speech alignment", () => {
@@ -16,7 +16,7 @@ describe("speech alignment", () => {
   });
 
   it("advances from the beginning on an exact phrase", () => {
-    const result = alignTranscript(script, "Welcome to Prompter", 0);
+    const result = alignTranscript(script, "Welcome to PrompterPro", 0);
     expect(result.matched).toBe(true);
     expect(result.nextIndex).toBe(3);
   });

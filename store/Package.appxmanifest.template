@@ -10,7 +10,7 @@
     Version="__VERSION__"
     ProcessorArchitecture="__PROCESSOR_ARCHITECTURE__" />
   <Properties>
-    <DisplayName>Prompter</DisplayName>
+    <DisplayName>PrompterPro</DisplayName>
     <PublisherDisplayName>__PUBLISHER_DISPLAY_NAME__</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
@@ -26,16 +26,16 @@
   <Applications>
     <Application
       Id="Prompter"
-      Executable="Prompter.exe"
+      Executable="PrompterPro.exe"
       EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
-        DisplayName="Prompter"
+        DisplayName="PrompterPro"
         Description="An offline, voice-following teleprompter for polished video recording."
         BackgroundColor="#0b0d0f"
         Square44x44Logo="Assets\Square44x44Logo.png"
         Square150x150Logo="Assets\Square150x150Logo.png">
         <uap:DefaultTile
-          ShortName="Prompter"
+          ShortName="PrompterPro"
           Wide310x150Logo="Assets\Wide310x150Logo.png"
           Square310x310Logo="Assets\Square310x310Logo.png" />
         <uap:SplashScreen

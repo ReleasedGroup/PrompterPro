@@ -76,7 +76,7 @@ the file for review/save, and removes its temporary working directory.
 
 The browser uses an `AudioWorklet` to copy mono PCM from the recording's
 existing microphone track. It sends those frames only to `/api/speech` on the
-loopback Prompter server. sherpa-onnx resamples to 16 kHz, decodes incrementally,
+loopback PrompterPro server. sherpa-onnx resamples to 16 kHz, decodes incrementally,
 and returns partial and endpoint-finalized text over the same WebSocket. The
 small English Zipformer model is installed once with `npm run speech:model` and
 is ignored by Git.

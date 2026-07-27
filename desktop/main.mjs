@@ -12,11 +12,19 @@ import {
 const MODEL_DIRECTORY_NAME =
   "sherpa-onnx-streaming-zipformer-en-20M-2023-02-17";
 const BACKGROUND_COLOR = "#0b0d0f";
+const LEGACY_USER_DATA_DIRECTORY_NAME = "Prompter";
 
 let mainWindow = null;
 let localServer = null;
 let localServerProcess = null;
 let appUrl = null;
+
+// Keep the existing Electron profile after the visible product rename so
+// scripts, device preferences, and other local browser data survive upgrades.
+app.setPath(
+  "userData",
+  path.join(app.getPath("appData"), LEGACY_USER_DATA_DIRECTORY_NAME),
+);
 
 function isLoopbackUrl(value) {
   try {
@@ -73,7 +81,7 @@ async function startLocalServer() {
 
   const address = localServer.address();
   if (!address || typeof address === "string") {
-    throw new Error("Prompter could not reserve a local server port.");
+    throw new Error("PrompterPro could not reserve a local server port.");
   }
   appUrl = `http://127.0.0.1:${address.port}`;
 }
@@ -138,10 +146,10 @@ async function startArm64Sidecar() {
 }
 
 async function createWindow() {
-  if (!appUrl) throw new Error("The local Prompter server is not ready.");
+  if (!appUrl) throw new Error("The local PrompterPro server is not ready.");
 
   mainWindow = new BrowserWindow({
-    title: "Prompter",
+    title: "PrompterPro",
     width: 1440,
     height: 960,
     minWidth: 1040,
@@ -183,7 +191,7 @@ if (!hasSingleInstanceLock) {
 
   app.whenReady()
     .then(async () => {
-      app.setAppUserModelId("ReleasedGroup.Prompter");
+      app.setAppUserModelId("ReleasedPtyLtd.PrompterPro");
       configurePermissions();
       await startLocalServer();
       await createWindow();
@@ -191,7 +199,7 @@ if (!hasSingleInstanceLock) {
     .catch((error) => {
       const message =
         error instanceof Error ? error.message : "Unknown startup error";
-      dialog.showErrorBox("Prompter could not start", message);
+      dialog.showErrorBox("PrompterPro could not start", message);
       app.quit();
     });
 

@@ -1,6 +1,12 @@
 const WINDOWS_VERSION_PATTERN = /^\d+(?:\.\d+){0,3}$/;
 const WINDOWS_ARCHITECTURES = new Set(["x64", "arm64"]);
 
+export const DEFAULT_STORE_IDENTITY = Object.freeze({
+  identityName: "ReleasedPtyLtd.PrompterPro",
+  publisher: "CN=E3BDC624-0B0A-4256-85B0-5AE714EA8897",
+  publisherDisplayName: "Released Pty Ltd",
+});
+
 export function toWindowsVersion(version) {
   const numericVersion = version.split("-", 1)[0];
   if (!WINDOWS_VERSION_PATTERN.test(numericVersion)) {

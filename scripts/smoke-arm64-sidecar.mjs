@@ -15,7 +15,7 @@ const packageOutputDirectory = process.env.PROMPTER_PACKAGE_OUTPUT_DIR
   : path.join(rootDirectory, "out");
 const arm64Directory = path.join(
   packageOutputDirectory,
-  "Prompter-win32-arm64",
+  "PrompterPro-win32-arm64",
 );
 const nodeExecutable = path.join(
   arm64Directory,

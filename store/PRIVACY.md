@@ -1,12 +1,12 @@
-# Prompter privacy policy
+# PrompterPro privacy policy
 
 Effective date: 26 July 2026
 
-Prompter is designed to keep your recording workflow on your Windows device.
+PrompterPro is designed to keep your recording workflow on your Windows device.
 
 ## Data the app handles
 
-Prompter can access your camera and microphone after you grant Windows
+PrompterPro can access your camera and microphone after you grant Windows
 permission. It uses them to show a preview, record a take and follow your
 spoken position in a script.
 
@@ -14,13 +14,13 @@ Scripts are stored in local application storage. Camera and microphone media,
 speech samples and recognised words are processed locally. A recording may be
 converted to MP4 in a temporary local folder, which is removed after export.
 
-Prompter does not include advertising, analytics or telemetry. It does not
+PrompterPro does not include advertising, analytics or telemetry. It does not
 collect account information, contacts, location, payment information, your
 script library, recordings or transcripts.
 
 ## Network access
 
-The Microsoft Store build does not require a Prompter cloud service for its
+The Microsoft Store build does not require a PrompterPro cloud service for its
 core script, speech-following and recording features. Windows and Microsoft
 Store may make their own network requests under Microsoft's terms.
 
@@ -32,13 +32,13 @@ local script library are not included in that request.
 ## Your choices
 
 You can deny or revoke camera and microphone permission in Windows Settings.
-You can delete scripts inside Prompter and delete exported recordings using
+You can delete scripts inside PrompterPro and delete exported recordings using
 Windows File Explorer. Uninstalling the app removes its local application
 storage, subject to Windows behaviour and any backups you control.
 
 ## Children
 
-Prompter does not knowingly collect personal information from children.
+PrompterPro does not knowingly collect personal information from children.
 
 ## Changes and contact
 

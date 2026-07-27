@@ -1,11 +1,38 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_STORE_IDENTITY,
   escapeXml,
   renderStoreManifest,
   toWindowsVersion,
 } from "../scripts/store-manifest.mjs";
 
 describe("Windows Store manifest", () => {
+  it("uses the Partner Center identity and PrompterPro product metadata", () => {
+    const template = readFileSync(
+      new URL("../store/Package.appxmanifest.template", import.meta.url),
+      "utf8",
+    );
+    const manifest = renderStoreManifest(template, {
+      architecture: "x64",
+      ...DEFAULT_STORE_IDENTITY,
+      minimumWindowsVersion: "10.0.22000.0",
+      version: "1.2.3",
+    });
+
+    expect(manifest).toContain('Name="ReleasedPtyLtd.PrompterPro"');
+    expect(manifest).toContain(
+      'Publisher="CN=E3BDC624-0B0A-4256-85B0-5AE714EA8897"',
+    );
+    expect(manifest).toContain("<DisplayName>PrompterPro</DisplayName>");
+    expect(manifest).toContain(
+      "<PublisherDisplayName>Released Pty Ltd</PublisherDisplayName>",
+    );
+    expect(manifest).toContain('Executable="PrompterPro.exe"');
+    expect(manifest).toContain('DisplayName="PrompterPro"');
+    expect(manifest).toContain('ShortName="PrompterPro"');
+  });
+
   it("converts semantic versions to four-part MSIX versions", () => {
     expect(toWindowsVersion("2.7.3")).toBe("2.7.3.0");
     expect(toWindowsVersion("2.7.3-beta.1")).toBe("2.7.3.0");
