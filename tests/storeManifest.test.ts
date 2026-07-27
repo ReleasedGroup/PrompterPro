@@ -31,12 +31,12 @@ describe("Windows Store manifest", () => {
           identityName: "ReleasedGroup.Prompter",
           minimumWindowsVersion: "10.0.22000.0",
           publisher: "CN=Released Group",
-          publisherDisplayName: "Released Group",
+          publisherDisplayName: "Released Pty Ltd",
           version: "1.2.3",
         },
       ),
     ).toBe(
-      '<Identity Name="ReleasedGroup.Prompter" Publisher="CN=Released Group" Version="1.2.3.0" ProcessorArchitecture="arm64"/><Target MinVersion="10.0.22000.0"/><Name>Released Group</Name>',
+      '<Identity Name="ReleasedGroup.Prompter" Publisher="CN=Released Group" Version="1.2.3.0" ProcessorArchitecture="arm64"/><Target MinVersion="10.0.22000.0"/><Name>Released Pty Ltd</Name>',
     );
   });
 
@@ -47,7 +47,7 @@ describe("Windows Store manifest", () => {
         identityName: "ReleasedGroup.Prompter",
         minimumWindowsVersion: "10.0.17763.0",
         publisher: "CN=Released Group",
-        publisherDisplayName: "Released Group",
+        publisherDisplayName: "Released Pty Ltd",
         version: "1.2.3",
       }),
     ).toThrow(/x64 or arm64/);
