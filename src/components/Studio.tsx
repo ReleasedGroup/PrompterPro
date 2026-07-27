@@ -21,6 +21,11 @@ import {
   useState,
 } from "react";
 import { useSpeechFollower } from "../hooks/useSpeechFollower";
+import {
+  maximumCameraResolution,
+  maximizeVideoTrackResolution,
+  recordingVideoBitrate,
+} from "../lib/cameraRecording";
 import { formatDuration, safeFileName } from "../lib/format";
 import type { PrompterScript } from "../types";
 import { TeleprompterOverlay } from "./TeleprompterOverlay";
@@ -130,6 +135,7 @@ export function Studio({
   );
   const [devicesOpen, setDevicesOpen] = useState(false);
   const [switchingDevice, setSwitchingDevice] = useState(false);
+  const [videoResolution, setVideoResolution] = useState("");
   const streamRef = useRef<MediaStream | null>(null);
   const previewRef = useRef<HTMLVideoElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -182,36 +188,46 @@ export function Studio({
         }
 
         const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          ...(cameraId
-            ? {
-                deviceId:
-                  requireExactDevices
-                    ? { exact: cameraId }
-                    : { ideal: cameraId },
-              }
-            : {}),
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          frameRate: { ideal: 30 },
-        },
-        audio: {
-          ...(microphoneId
-            ? {
-                deviceId:
-                  requireExactDevices
-                    ? { exact: microphoneId }
-                    : { ideal: microphoneId },
-              }
-            : {}),
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      });
+          video: {
+            ...(cameraId
+              ? {
+                  deviceId:
+                    requireExactDevices
+                      ? { exact: cameraId }
+                      : { ideal: cameraId },
+                }
+              : {}),
+            ...maximumCameraResolution,
+            frameRate: { ideal: 30 },
+          },
+          audio: {
+            ...(microphoneId
+              ? {
+                  deviceId:
+                    requireExactDevices
+                      ? { exact: microphoneId }
+                      : { ideal: microphoneId },
+                }
+              : {}),
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+        });
+
+        const videoTrack = stream.getVideoTracks()[0];
+        let videoSettings = videoTrack?.getSettings();
+        if (videoTrack) {
+          try {
+            videoSettings = await maximizeVideoTrackResolution(videoTrack);
+          } catch {
+            // Keep the already high-resolution stream if a driver reports
+            // capabilities that it cannot apply as a combined mode.
+          }
+        }
 
         const activeCameraId =
-          stream.getVideoTracks()[0]?.getSettings().deviceId ?? cameraId;
+          videoSettings?.deviceId ?? cameraId;
         const activeMicrophoneId =
           stream.getAudioTracks()[0]?.getSettings().deviceId ?? microphoneId;
 
@@ -219,6 +235,11 @@ export function Studio({
         streamRef.current = stream;
         setSelectedCameraId(activeCameraId);
         setSelectedMicrophoneId(activeMicrophoneId);
+        setVideoResolution(
+          videoSettings?.width && videoSettings.height
+            ? `${videoSettings.width} × ${videoSettings.height}`
+            : "",
+        );
         saveDevicePreferences({
           cameraId: activeCameraId,
           microphoneId: activeMicrophoneId,
@@ -325,10 +346,25 @@ export function Studio({
 
     try {
       const mimeType = preferredMimeType();
-      const recorder = new MediaRecorder(
-        stream,
-        mimeType ? { mimeType } : undefined,
+      const videoBitsPerSecond = recordingVideoBitrate(
+        videoTrack.getSettings(),
       );
+      const recorderOptions: MediaRecorderOptions = {
+        ...(mimeType ? { mimeType } : {}),
+        ...(videoBitsPerSecond ? { videoBitsPerSecond } : {}),
+      };
+      let recorder: MediaRecorder;
+      try {
+        recorder = new MediaRecorder(stream, recorderOptions);
+      } catch (caught) {
+        if (!videoBitsPerSecond) throw caught;
+        // Some browser encoders reject an explicit high bitrate. Preserve the
+        // maximum-resolution stream and let that encoder select its own rate.
+        recorder = new MediaRecorder(
+          stream,
+          mimeType ? { mimeType } : undefined,
+        );
+      }
       chunksRef.current = [];
       setElapsed(0);
       resetFollower();
@@ -651,8 +687,10 @@ export function Studio({
                   </p>
                 ) : (
                   <p>
-                    Changes apply immediately to the preview and your next
-                    recording.
+                    Recording at{" "}
+                    {videoResolution ||
+                      "the camera's highest available resolution"}
+                    . Changes apply to the preview and your next recording.
                   </p>
                 )}
                 {error && streamRef.current && !switchingDevice && (

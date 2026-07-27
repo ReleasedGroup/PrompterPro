@@ -10,7 +10,8 @@ heard again, it resumes. The prompt overlay is never burned into the recording.
 - Create, edit, duplicate, search, and delete scripts stored on this device.
 - Generate a first draft from a topic, audience, tone, duration, and key points.
 - Preview camera and microphone before recording.
-- Record raw video and audio with the browser's `MediaRecorder`.
+- Record raw video at the camera's highest available resolution, with
+  resolution-aware bitrate, and audio through the browser's `MediaRecorder`.
 - Follow spoken words with local, streaming sherpa-onnx recognition.
 - Pause prompt movement when speech leaves the script without pausing recording.
 - Review and save every finished take as an MP4 with H.264 video and AAC audio.

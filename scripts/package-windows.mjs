@@ -6,6 +6,7 @@ import {
   mkdir,
   readFile,
   readdir,
+  rm,
   writeFile,
 } from "node:fs/promises";
 import path from "node:path";
@@ -24,7 +25,9 @@ const modelDirectory = path.join(
   modelDirectoryName,
 );
 const storeDirectory = path.join(rootDirectory, "store");
-const outputDirectory = path.join(rootDirectory, "out");
+const outputDirectory = process.env.PROMPTER_PACKAGE_OUTPUT_DIR
+  ? path.resolve(rootDirectory, process.env.PROMPTER_PACKAGE_OUTPUT_DIR)
+  : path.join(rootDirectory, "out");
 const packageJson = JSON.parse(
   await readFile(path.join(rootDirectory, "package.json"), "utf8"),
 );
@@ -33,9 +36,53 @@ const allowedAppEntries = new Set([
   "dist",
   "dist-server",
   "node_modules",
-  "package-lock.json",
   "package.json",
 ]);
+const runtimeModuleFiles = new Map([
+  [
+    "ffmpeg-static",
+    new Set(["ffmpeg.exe", "index.js", "package.json"]),
+  ],
+  [
+    "sherpa-onnx-node",
+    new Set([
+      "addon-static-import.js",
+      "addon.js",
+      "audio-tagg.js",
+      "keyword-spotter.js",
+      "non-streaming-asr.js",
+      "non-streaming-speaker-diarization.js",
+      "non-streaming-speech-denoiser.js",
+      "non-streaming-tts.js",
+      "online-speech-denoiser.js",
+      "package.json",
+      "punctuation.js",
+      "resampler.js",
+      "sherpa-onnx.js",
+      "speaker-identification.js",
+      "spoken-language-identification.js",
+      "streaming-asr.js",
+      "vad.js",
+    ]),
+  ],
+  [
+    "sherpa-onnx-win-x64",
+    new Set([
+      "index.js",
+      "onnxruntime.dll",
+      "onnxruntime_providers_shared.dll",
+      "package.json",
+      "sherpa-onnx-c-api.dll",
+      "sherpa-onnx-cxx-api.dll",
+      "sherpa-onnx.node",
+    ]),
+  ],
+]);
+const requiredRuntimeFiles = [
+  "node_modules/ffmpeg-static/ffmpeg.exe",
+  "node_modules/sherpa-onnx-node/sherpa-onnx.js",
+  "node_modules/sherpa-onnx-win-x64/sherpa-onnx.node",
+];
 const architectures = [
   {
     name: "x64",
@@ -81,6 +128,7 @@ for (const architecture of architectures) {
     asar: architecture.asar,
     icon: path.join(storeDirectory, "assets", "AppIcon.ico"),
     extraResource: [modelDirectory],
+    afterPrune: [removeUnneededRuntimeModules],
     appVersion: packageJson.version,
     buildVersion: packageJson.version,
     win32metadata: {
@@ -173,9 +221,54 @@ function shouldIgnorePackageFile(file) {
     .startsWith(`${normalizedRoot.toLowerCase()}/`)
     ? normalizedFile.slice(normalizedRoot.length + 1)
     : normalizedFile.replace(/^\/+/, "");
-  if (!relative) return false;
+  return !isAllowedAppPath(relative);
+}
+
+function isAllowedAppPath(relative) {
+  if (!relative) return true;
   const topLevel = relative.split("/", 1)[0];
-  return !allowedAppEntries.has(topLevel);
+  if (!allowedAppEntries.has(topLevel)) return false;
+  if (topLevel !== "node_modules") return true;
+  return isRequiredRuntimeModulePath(relative);
+}
+
+function isRequiredRuntimeModulePath(relative) {
+  const parts = relative.split("/");
+  if (parts.length === 1) return true;
+
+  const packageName = parts[1];
+  const allowedFiles = runtimeModuleFiles.get(packageName);
+  if (!allowedFiles) return false;
+  if (parts.length === 2) return true;
+  return allowedFiles.has(parts.slice(2).join("/"));
+}
+
+async function removeUnneededRuntimeModules({ buildPath }) {
+  const modulesDirectory = path.join(buildPath, "node_modules");
+  const moduleEntries = await readdir(modulesDirectory, {
+    withFileTypes: true,
+  });
+
+  for (const moduleEntry of moduleEntries) {
+    const modulePath = path.join(modulesDirectory, moduleEntry.name);
+    const allowedFiles = runtimeModuleFiles.get(moduleEntry.name);
+    if (!allowedFiles || !moduleEntry.isDirectory()) {
+      await rm(modulePath, { recursive: true, force: true });
+      continue;
+    }
+
+    const packageEntries = await readdir(modulePath, {
+      withFileTypes: true,
+    });
+    for (const packageEntry of packageEntries) {
+      if (!allowedFiles.has(packageEntry.name)) {
+        await rm(path.join(modulePath, packageEntry.name), {
+          recursive: true,
+          force: true,
+        });
+      }
+    }
+  }
 }
 
 async function assertPackagedAppAllowList(
@@ -189,21 +282,30 @@ async function assertPackagedAppAllowList(
           path.join(resourcesDirectory, "app.asar"),
           { isPack: false },
         )
-      : await readdir(path.join(resourcesDirectory, "app"));
-  const topLevelEntries = new Set(
-    entries.map((entry) =>
-      entry
-        .replaceAll("\\", "/")
-        .replace(/^\/+/, "")
-        .split("/", 1)[0],
-    ),
+      : await readdir(
+          path.join(resourcesDirectory, "app"),
+          { recursive: true },
+        );
+  const normalizedEntries = entries.map((entry) =>
+    entry
+      .replaceAll("\\", "/")
+      .replace(/^\/+/, ""),
   );
-  const unexpected = [...topLevelEntries].filter(
-    (entry) => entry && !allowedAppEntries.has(entry),
-  );
+  const unexpected = normalizedEntries
+    .filter((entry) => !isAllowedAppPath(entry))
+    .slice(0, 10);
   if (unexpected.length > 0) {
     throw new Error(
       `${architecture} package contains unexpected app files: ${unexpected.join(", ")}.`,
+    );
+  }
+  const packagedEntries = new Set(normalizedEntries);
+  const missingRuntimeFiles = requiredRuntimeFiles.filter(
+    (entry) => !packagedEntries.has(entry),
+  );
+  if (missingRuntimeFiles.length > 0) {
+    throw new Error(
+      `${architecture} package is missing runtime files: ${missingRuntimeFiles.join(", ")}.`,
     );
   }
 }

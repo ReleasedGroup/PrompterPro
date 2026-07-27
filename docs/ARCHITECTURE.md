@@ -51,6 +51,8 @@ original `MediaStream`, not a canvas composition, so the overlay is not recorded
   current-word scrolling.
 - `server/index.ts`: input validation, local MP4 conversion, and server-side
   OpenAI call.
+- `scripts/build-server.mjs`: bundles the local API's JavaScript dependencies
+  while leaving only FFmpeg and the native speech loader external.
 - `desktop/main.mjs`: hardened Electron window, media permissions and lifecycle
   for the loopback Node service. The ARM64 shell starts a bundled x64 Node
   sidecar under Windows 11 compatibility so the existing offline speech and
@@ -61,7 +63,11 @@ original `MediaStream`, not a canvas composition, so the overlay is not recorded
 ## Recording and MP4 export
 
 Studio requires one live video track and one live audio track before recording.
-It prefers a browser-native MP4 MediaRecorder profile. Where that is not
+It requests a high-resolution stream, reads the selected camera's reported
+capabilities, and applies the maximum available width and height. Recorder
+bitrate scales with the negotiated resolution and frame rate, with a
+browser-selected bitrate fallback for encoders that reject an explicit rate.
+Studio prefers a browser-native MP4 MediaRecorder profile. Where that is not
 available, it records a WebM/Opus take and posts it only to the loopback API.
 The API converts it to H.264/AAC MP4 with the bundled FFmpeg executable, returns
 the file for review/save, and removes its temporary working directory.

@@ -67,6 +67,21 @@ The `Prompter_<version>_x64_arm64.msixbundle` file is written to `out/store/`.
 The unsigned local-development identity is useful for validation but must not
 be submitted to Partner Center.
 
+The server build bundles ordinary JavaScript dependencies. Packaging retains
+only the FFmpeg executable and sherpa-onnx loader/native files outside that
+bundle, avoiding thousands of development and transitive dependency artifacts
+in the ARM64 application payload.
+
+To write a verification package somewhere other than `out`, set a path relative
+to the repository (or an absolute path) for both packaging and the sidecar smoke
+test:
+
+```powershell
+$env:PROMPTER_PACKAGE_OUTPUT_DIR = "out\verification"
+npm.cmd run package:windows
+npm.cmd run speech:smoke:arm64
+```
+
 ## Automated releases
 
 The Store release workflow validates and uploads an MSIX bundle artifact for a
