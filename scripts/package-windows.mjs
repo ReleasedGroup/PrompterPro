@@ -362,7 +362,7 @@ async function addStoreManifest(packageDirectory, architecture) {
       "CN=Released Group Development",
     publisherDisplayName:
       process.env.MS_STORE_PUBLISHER_DISPLAY_NAME ||
-      "Released Group",
+      "Released Pty Ltd",
     version: process.env.MS_STORE_VERSION || packageJson.version,
   });
   await writeFile(
