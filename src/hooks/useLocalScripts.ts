@@ -5,10 +5,10 @@ const STORAGE_KEY = "prompter.scripts.v1";
 
 const sampleScript: PrompterScript = {
   id: "welcome-to-prompter",
-  title: "Welcome to Prompter",
+  title: "Welcome to PrompterPro",
   body:
     "Great delivery starts with a clear idea and the confidence to say it naturally.\n\n" +
-    "Prompter keeps your next words close to the camera, follows your voice, and waits when you improvise. " +
+    "PrompterPro keeps your next words close to the camera, follows your voice, and waits when you improvise. " +
     "The recording keeps running, so you can stay present instead of worrying about the controls.\n\n" +
     "Take a breath, look toward the lens, and make the message your own.",
   source: "manual",

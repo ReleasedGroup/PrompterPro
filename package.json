@@ -1,9 +1,9 @@
 {
   "name": "prompter",
-  "productName": "Prompter",
+  "productName": "PrompterPro",
   "version": "0.1.0",
   "description": "An offline, voice-following teleprompter for polished video recording.",
-  "author": "Released Group",
+  "author": "Released Pty Ltd",
   "private": true,
   "type": "module",
   "main": "desktop/main.mjs",

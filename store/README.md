@@ -1,6 +1,6 @@
 # Microsoft Store release guide
 
-Prompter is packaged as native x64 and ARM64 Electron desktop applications and
+PrompterPro is packaged as native x64 and ARM64 Electron desktop applications and
 then combined into an unsigned MSIX bundle. Microsoft Store signs the accepted
 bundle during submission.
 
@@ -30,6 +30,13 @@ Repository variables:
 - `MS_STORE_PUBLISHER`
 - `MS_STORE_PUBLISHER_DISPLAY_NAME`
 
+The packager defaults to the production `ReleasedPtyLtd.PrompterPro` identity,
+its Partner Center publisher certificate subject and `Released Pty Ltd`.
+Windows derives the package family name
+`ReleasedPtyLtd.PrompterPro_q0b077qanz1d8` from that identity.
+Repository variables override those defaults and are required, along with the
+product ID, to enable automated publishing.
+
 Repository secrets for a Microsoft Entra application authorised in Partner
 Center:
 
@@ -56,16 +63,18 @@ npm.cmd run speech:smoke:arm64
 For a Partner Center package, set the reserved identity first:
 
 ```powershell
-$env:MS_STORE_IDENTITY_NAME = "YourReservedIdentityName"
-$env:MS_STORE_PUBLISHER = "CN=YourPublisherIdentity"
-$env:MS_STORE_PUBLISHER_DISPLAY_NAME = "Your Publisher Name"
+$env:MS_STORE_IDENTITY_NAME = "ReleasedPtyLtd.PrompterPro"
+$env:MS_STORE_PUBLISHER = "CN=E3BDC624-0B0A-4256-85B0-5AE714EA8897"
+$env:MS_STORE_PUBLISHER_DISPLAY_NAME = "Released Pty Ltd"
 $env:MS_STORE_VERSION = "1.0.0"
 npm.cmd run package:windows
 ```
 
-The `Prompter_<version>_x64_arm64.msixbundle` file is written to `out/store/`.
-The unsigned local-development identity is useful for validation but must not
-be submitted to Partner Center.
+The `PrompterPro_<version>_x64_arm64.msixbundle` file is written to `out/store/`.
+The unsigned bundle uses the production Partner Center identity and can be
+submitted as-is. Sideloading requires a certificate whose subject matches the
+manifest publisher; use the identity environment variables only when a
+deliberate development identity is needed.
 
 The server build bundles ordinary JavaScript dependencies. Packaging retains
 only the FFmpeg executable and sherpa-onnx loader/native files outside that

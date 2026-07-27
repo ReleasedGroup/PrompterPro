@@ -2,7 +2,7 @@
 
 ## Product promise
 
-Prompter helps one person deliver a prepared script naturally while recording
+PrompterPro helps one person deliver a prepared script naturally while recording
 clean source video and audio. The presenter can look toward the camera instead
 of down at notes, and the prompt reacts to their speech rather than imposing a
 fixed scroll speed.

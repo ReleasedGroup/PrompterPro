@@ -13,7 +13,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { listPackage } from "@electron/asar";
 import { packager } from "@electron/packager";
-import { renderStoreManifest } from "./store-manifest.mjs";
+import {
+  DEFAULT_STORE_IDENTITY,
+  renderStoreManifest,
+} from "./store-manifest.mjs";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const rootDirectory = path.resolve(scriptDirectory, "..");
@@ -118,8 +121,8 @@ for (const architecture of architectures) {
   console.log(`Packaging the ${architecture.name} Electron application...`);
   const packagePaths = await packager({
     dir: rootDirectory,
-    name: "Prompter",
-    executableName: "Prompter",
+    name: packageJson.productName,
+    executableName: packageJson.productName,
     platform: "win32",
     arch: architecture.name,
     out: outputDirectory,
@@ -132,11 +135,11 @@ for (const architecture of architectures) {
     appVersion: packageJson.version,
     buildVersion: packageJson.version,
     win32metadata: {
-      CompanyName: "Released Group",
+      CompanyName: packageJson.author,
       FileDescription: packageJson.description,
-      ProductName: "Prompter",
-      InternalName: "Prompter",
-      OriginalFilename: "Prompter.exe",
+      ProductName: packageJson.productName,
+      InternalName: packageJson.productName,
+      OriginalFilename: `${packageJson.productName}.exe`,
       "requested-execution-level": "asInvoker",
     },
     ignore: shouldIgnorePackageFile,
@@ -150,7 +153,7 @@ for (const architecture of architectures) {
 
   const packageDirectory = packagePaths[0];
   await assertPeArchitecture(
-    path.join(packageDirectory, "Prompter.exe"),
+    path.join(packageDirectory, `${packageJson.productName}.exe`),
     architecture.name,
   );
   await assertPackagedAppAllowList(
@@ -175,7 +178,7 @@ const msixOutputDirectory = path.join(outputDirectory, "store");
 await mkdir(msixOutputDirectory, { recursive: true });
 const bundlePath = path.join(
   msixOutputDirectory,
-  `Prompter_${toSafeVersion(version)}_x64_arm64.msixbundle`,
+  `${packageJson.productName}_${toSafeVersion(version)}_x64_arm64.msixbundle`,
 );
 const winAppCli = path.join(
   rootDirectory,
@@ -355,14 +358,14 @@ async function addStoreManifest(packageDirectory, architecture) {
     architecture: architecture.name,
     identityName:
       process.env.MS_STORE_IDENTITY_NAME ||
-      "ReleasedGroup.Prompter.Dev",
+      DEFAULT_STORE_IDENTITY.identityName,
     minimumWindowsVersion: architecture.minimumWindowsVersion,
     publisher:
       process.env.MS_STORE_PUBLISHER ||
-      "CN=Released Group Development",
+      DEFAULT_STORE_IDENTITY.publisher,
     publisherDisplayName:
       process.env.MS_STORE_PUBLISHER_DISPLAY_NAME ||
-      "Released Pty Ltd",
+      DEFAULT_STORE_IDENTITY.publisherDisplayName,
     version: process.env.MS_STORE_VERSION || packageJson.version,
   });
   await writeFile(
