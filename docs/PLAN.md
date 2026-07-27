@@ -78,6 +78,7 @@ Release gate:
 - Component: script CRUD, generation errors, studio state transitions.
 - Browser: device denial, missing local model, speech-engine disconnect,
   record/stop/download.
-- Hardware: multiple cameras/mics, Bluetooth devices, 720p/1080p, long takes.
+- Hardware: multiple cameras/mics, Bluetooth devices, 720p/1080p/4K, long
+  takes.
 - Platform: Edge/Chrome Windows first; Safari/iOS and Android only after native
   adapter decisions.

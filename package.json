@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "concurrently -k -n API,WEB -c cyan,magenta \"tsx watch server/index.ts\" \"vite\"",
     "build": "tsc -b && vite build",
-    "build:server": "esbuild server/index.ts --bundle --platform=node --format=esm --target=node22 --packages=external --outfile=dist-server/index.mjs",
+    "build:server": "node scripts/build-server.mjs",
     "build:desktop": "npm run build && npm run build:server",
     "desktop": "npm run build:desktop && electron .",
     "package:windows": "npm run build:desktop && node scripts/package-windows.mjs",

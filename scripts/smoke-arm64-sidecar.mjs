@@ -10,9 +10,11 @@ const require = createRequire(import.meta.url);
 const sherpa = require("sherpa-onnx-node");
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const rootDirectory = path.resolve(scriptDirectory, "..");
+const packageOutputDirectory = process.env.PROMPTER_PACKAGE_OUTPUT_DIR
+  ? path.resolve(rootDirectory, process.env.PROMPTER_PACKAGE_OUTPUT_DIR)
+  : path.join(rootDirectory, "out");
 const arm64Directory = path.join(
-  rootDirectory,
-  "out",
+  packageOutputDirectory,
   "Prompter-win32-arm64",
 );
 const nodeExecutable = path.join(
