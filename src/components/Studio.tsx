@@ -1,4 +1,7 @@
 import {
+  AlignVerticalJustifyCenter,
+  AlignVerticalJustifyEnd,
+  AlignVerticalJustifyStart,
   ArrowLeft,
   Camera,
   ChevronLeft,
@@ -27,6 +30,11 @@ import {
   recordingVideoBitrate,
 } from "../lib/cameraRecording";
 import { formatDuration, safeFileName } from "../lib/format";
+import {
+  isTargetOutside,
+  nextPromptPosition,
+  type PromptPosition,
+} from "../lib/studioControls";
 import type { PrompterScript } from "../types";
 import { TeleprompterOverlay } from "./TeleprompterOverlay";
 
@@ -121,6 +129,8 @@ export function Studio({
   const [elapsed, setElapsed] = useState(0);
   const [fontSize, setFontSize] = useState(42);
   const [mirrored, setMirrored] = useState(false);
+  const [promptPosition, setPromptPosition] =
+    useState<PromptPosition>("middle");
   const [recordingUrl, setRecordingUrl] = useState("");
   const [recordingType, setRecordingType] = useState("");
   const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
@@ -139,6 +149,7 @@ export function Studio({
   const streamRef = useRef<MediaStream | null>(null);
   const previewRef = useRef<HTMLVideoElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const devicesMenuRef = useRef<HTMLDivElement | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const recordingUrlRef = useRef("");
@@ -151,6 +162,19 @@ export function Studio({
   );
   const resetFollower = follower.reset;
   const movePrompt = follower.move;
+
+  useEffect(() => {
+    if (!devicesOpen) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      if (isTargetOutside(devicesMenuRef.current, event.target)) {
+        setDevicesOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [devicesOpen]);
 
   const attachPreview = useCallback(() => {
     if (previewRef.current && streamRef.current) {
@@ -586,6 +610,14 @@ export function Studio({
 
   const mp4Ready = recordingType.includes("mp4");
   const downloadExtension = mp4Ready ? "mp4" : "webm";
+  const promptPositionLabel =
+    promptPosition[0].toUpperCase() + promptPosition.slice(1);
+  const PromptPositionIcon =
+    promptPosition === "upper"
+      ? AlignVerticalJustifyStart
+      : promptPosition === "lower"
+        ? AlignVerticalJustifyEnd
+        : AlignVerticalJustifyCenter;
 
   return (
     <main className="studio-layout">
@@ -601,7 +633,7 @@ export function Studio({
           </span>
         </div>
         <div className="studio-settings">
-          <div className="devices-menu">
+          <div className="devices-menu" ref={devicesMenuRef}>
             <button
               className={`tool-button ${devicesOpen ? "active" : ""}`}
               onClick={() => setDevicesOpen((open) => !open)}
@@ -707,6 +739,17 @@ export function Studio({
             <FlipHorizontal2 size={17} />
             Mirror
           </button>
+          <button
+            className="tool-button"
+            onClick={() =>
+              setPromptPosition((position) => nextPromptPosition(position))
+            }
+            aria-label={`Prompt height: ${promptPositionLabel}`}
+            title={`Prompt height: ${promptPositionLabel}`}
+          >
+            <PromptPositionIcon size={17} />
+            {promptPositionLabel}
+          </button>
           <div className="font-control">
             <button
               onClick={() => setFontSize((size) => Math.max(26, size - 4))}
@@ -773,6 +816,7 @@ export function Studio({
               status={follower.status}
               fontSize={fontSize}
               mirrored={mirrored}
+              position={promptPosition}
             />
           )}
 
