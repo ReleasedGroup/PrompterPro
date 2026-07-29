@@ -14,7 +14,8 @@ fixed scroll speed.
 3. Select a script and enter Studio.
 4. Allow camera and microphone access and confirm the preview.
 5. Start recording after a three-second countdown.
-6. Speak while the current phrase stays near the camera line.
+6. Choose an upper, middle, or lower eye-line to match the camera, then speak
+   while the current phrase stays at that height.
 7. If speech does not match nearby script words, prompt movement pauses and the
    recording continues.
 8. Resume from nearby script text and prompt movement catches up.
@@ -65,7 +66,7 @@ recording and lets Studio devote most of the screen to eye-line and readability.
 - Large controls with visible keyboard focus.
 - `Space` starts/stops recording outside editable fields.
 - Arrow keys move the prompt in Studio.
-- Prompt font size and mirror mode are adjustable.
+- Prompt font size, vertical eye-line, and mirror mode are adjustable.
 - Reduced-motion preferences disable smooth scrolling and decorative animation.
 - The presenter must explicitly grant camera and microphone permissions.
 

@@ -1083,7 +1083,15 @@ p {
 }
 
 .prompt-spacer {
-  height: 45%;
+  flex: 0 0 auto;
+}
+
+.prompt-spacer-start {
+  height: var(--prompt-anchor);
+}
+
+.prompt-spacer-end {
+  height: calc(100% - var(--prompt-anchor));
 }
 
 .prompt-word {
@@ -1106,7 +1114,7 @@ p {
 .reading-line {
   position: absolute;
   z-index: 3;
-  top: 50%;
+  top: var(--prompt-anchor);
   left: 22px;
   width: 4px;
   height: 46px;
