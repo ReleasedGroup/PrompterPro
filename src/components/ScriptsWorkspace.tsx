@@ -17,6 +17,7 @@ interface ScriptsWorkspaceProps {
   activeId: string | null;
   onSelect: (id: string) => void;
   onCreate: () => void;
+  aiDraftAvailable: boolean;
   onGenerate: () => void;
   onUpdate: (
     id: string,
@@ -32,6 +33,7 @@ export function ScriptsWorkspace({
   activeId,
   onSelect,
   onCreate,
+  aiDraftAvailable,
   onGenerate,
   onUpdate,
   onDelete,
@@ -75,16 +77,18 @@ export function ScriptsWorkspace({
           </button>
         </div>
 
-        <button className="ai-draft-button" onClick={onGenerate}>
-          <span className="ai-draft-icon">
-            <Sparkles size={18} />
-          </span>
-          <span>
-            <strong>Draft with AI</strong>
-            <small>Start from an idea</small>
-          </span>
-          <ArrowRight size={17} />
-        </button>
+        {aiDraftAvailable && (
+          <button className="ai-draft-button" onClick={onGenerate}>
+            <span className="ai-draft-icon">
+              <Sparkles size={18} />
+            </span>
+            <span>
+              <strong>Draft with AI</strong>
+              <small>Start from an idea</small>
+            </span>
+            <ArrowRight size={17} />
+          </button>
+        )}
 
         <label className="search-box">
           <Search size={17} />
