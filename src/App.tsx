@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Library, Radio, ShieldCheck } from "lucide-react";
 import { AIGenerator } from "./components/AIGenerator";
 import { Brand } from "./components/Brand";
 import { ScriptsWorkspace } from "./components/ScriptsWorkspace";
 import { Studio } from "./components/Studio";
 import { useLocalScripts } from "./hooks/useLocalScripts";
+import { getAiDraftAvailability } from "./lib/aiDraftAvailability";
 import { allowStudioExit } from "./lib/studioNavigation";
 import type { WorkspaceView } from "./types";
 
@@ -23,8 +24,13 @@ export default function App() {
   );
   const [showGenerator, setShowGenerator] = useState(false);
   const [studioRecording, setStudioRecording] = useState(false);
+  const [aiDraftAvailable, setAiDraftAvailable] = useState(false);
 
   const activeScript = activeId ? byId.get(activeId) ?? null : null;
+
+  useEffect(() => {
+    void getAiDraftAvailability().then(setAiDraftAvailable);
+  }, []);
 
   function newScript() {
     const script = createScript();
@@ -94,6 +100,7 @@ export default function App() {
           activeId={activeId}
           onSelect={setActiveId}
           onCreate={newScript}
+          aiDraftAvailable={aiDraftAvailable}
           onGenerate={() => setShowGenerator(true)}
           onUpdate={updateScript}
           onDelete={removeScript}
@@ -102,7 +109,7 @@ export default function App() {
         />
       )}
 
-      {showGenerator && (
+      {aiDraftAvailable && showGenerator && (
         <AIGenerator
           onClose={() => setShowGenerator(false)}
           onGenerated={(title, body) => {

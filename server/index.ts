@@ -143,6 +143,10 @@ app.get("/api/speech/status", (_request, response) => {
   });
 });
 
+app.get("/api/scripts/generate/status", (_request, response) => {
+  response.json({ available: Boolean(process.env.OPENAI_API_KEY) });
+});
+
 app.post("/api/scripts/generate", async (request, response) => {
   const body = request.body as GenerateBody;
   const topic = stringField(body.topic, 300);
