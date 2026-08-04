@@ -66,7 +66,8 @@ recording and lets Studio devote most of the screen to eye-line and readability.
 - Large controls with visible keyboard focus.
 - `Space` starts/stops recording outside editable fields.
 - Arrow keys move the prompt in Studio.
-- Prompt font size, vertical eye-line, and mirror mode are adjustable.
+- Prompt font size, vertical eye-line, mirror mode, and word/line highlighting
+  are adjustable.
 - Reduced-motion preferences disable smooth scrolling and decorative animation.
 - The presenter must explicitly grant camera and microphone permissions.
 

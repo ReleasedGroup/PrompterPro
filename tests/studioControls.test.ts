@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   isTargetOutside,
+  nextCaptionMode,
   nextPromptPosition,
   promptAnchor,
+  promptLineRange,
 } from "../src/lib/studioControls";
 import {
   DEFAULT_STUDIO_PREFERENCES,
@@ -31,6 +33,20 @@ describe("Studio controls", () => {
     expect(promptAnchor("lower")).toBeGreaterThan(0.5);
   });
 
+  it("cycles through each caption mode", () => {
+    expect(nextCaptionMode("word")).toBe("line");
+    expect(nextCaptionMode("line")).toBe("scroll");
+    expect(nextCaptionMode("scroll")).toBe("word");
+  });
+
+  it("finds every word on the active visual line", () => {
+    const offsets = [100, 100, 101, 152, 152, 204];
+
+    expect(promptLineRange(offsets, 1)).toEqual({ start: 0, end: 2 });
+    expect(promptLineRange(offsets, 4)).toEqual({ start: 3, end: 4 });
+    expect(promptLineRange(offsets, 6)).toBeNull();
+  });
+
   it("recognizes pointer targets outside the device menu", () => {
     const insideTarget = {} as EventTarget;
     const outsideTarget = {} as EventTarget;
@@ -56,6 +72,7 @@ describe("Studio preferences", () => {
         microphoneId: "microphone-3",
         fontSize: 54,
         promptPosition: "upper",
+        captionMode: "line",
       }),
     });
 
@@ -65,6 +82,7 @@ describe("Studio preferences", () => {
       microphoneId: "microphone-3",
       fontSize: 54,
       promptPosition: "upper",
+      captionMode: "line",
     });
   });
 
@@ -90,6 +108,7 @@ describe("Studio preferences", () => {
         cameraId: 123,
         fontSize: 200,
         promptPosition: "sideways",
+        captionMode: "paragraph",
       }),
     });
 
@@ -108,6 +127,7 @@ describe("Studio preferences", () => {
         microphoneId: "microphone-1",
         fontSize: 50,
         promptPosition: "lower",
+        captionMode: "scroll",
       },
       storage,
     );
@@ -119,6 +139,7 @@ describe("Studio preferences", () => {
       microphoneId: "microphone-1",
       fontSize: 58,
       promptPosition: "lower",
+      captionMode: "scroll",
     });
   });
 });
