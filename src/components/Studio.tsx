@@ -35,6 +35,10 @@ import {
   nextPromptPosition,
   type PromptPosition,
 } from "../lib/studioControls";
+import {
+  loadStudioPreferences,
+  updateStudioPreferences,
+} from "../lib/studioPreferences";
 import type { PrompterScript } from "../types";
 import { TeleprompterOverlay } from "./TeleprompterOverlay";
 
@@ -51,32 +55,6 @@ interface StudioProps {
   script: PrompterScript;
   onBack: () => void;
   onRecordingChange: (isRecording: boolean) => void;
-}
-
-interface DevicePreferences {
-  cameraId: string;
-  microphoneId: string;
-}
-
-const DEVICE_PREFERENCES_KEY = "prompter.devices.v1";
-
-function loadDevicePreferences(): DevicePreferences {
-  try {
-    const saved = localStorage.getItem(DEVICE_PREFERENCES_KEY);
-    if (!saved) return { cameraId: "", microphoneId: "" };
-    const parsed = JSON.parse(saved) as Partial<DevicePreferences>;
-    return {
-      cameraId: typeof parsed.cameraId === "string" ? parsed.cameraId : "",
-      microphoneId:
-        typeof parsed.microphoneId === "string" ? parsed.microphoneId : "",
-    };
-  } catch {
-    return { cameraId: "", microphoneId: "" };
-  }
-}
-
-function saveDevicePreferences(preferences: DevicePreferences) {
-  localStorage.setItem(DEVICE_PREFERENCES_KEY, JSON.stringify(preferences));
 }
 
 function preferredMimeType(): string {
@@ -122,15 +100,16 @@ export function Studio({
   onBack,
   onRecordingChange,
 }: StudioProps) {
-  const [initialDevicePreferences] = useState(loadDevicePreferences);
+  const [initialStudioPreferences] = useState(loadStudioPreferences);
   const [studioState, setStudioState] = useState<StudioState>("setup");
   const [error, setError] = useState("");
   const [countdown, setCountdown] = useState(3);
   const [elapsed, setElapsed] = useState(0);
-  const [fontSize, setFontSize] = useState(42);
+  const [fontSize, setFontSize] = useState(initialStudioPreferences.fontSize);
   const [mirrored, setMirrored] = useState(false);
-  const [promptPosition, setPromptPosition] =
-    useState<PromptPosition>("middle");
+  const [promptPosition, setPromptPosition] = useState<PromptPosition>(
+    initialStudioPreferences.promptPosition,
+  );
   const [recordingUrl, setRecordingUrl] = useState("");
   const [recordingType, setRecordingType] = useState("");
   const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
@@ -138,10 +117,10 @@ export function Studio({
     MediaDeviceInfo[]
   >([]);
   const [selectedCameraId, setSelectedCameraId] = useState(
-    initialDevicePreferences.cameraId,
+    initialStudioPreferences.cameraId,
   );
   const [selectedMicrophoneId, setSelectedMicrophoneId] = useState(
-    initialDevicePreferences.microphoneId,
+    initialStudioPreferences.microphoneId,
   );
   const [devicesOpen, setDevicesOpen] = useState(false);
   const [switchingDevice, setSwitchingDevice] = useState(false);
@@ -154,6 +133,10 @@ export function Studio({
   const chunksRef = useRef<Blob[]>([]);
   const recordingUrlRef = useRef("");
   const explicitDeviceSelectionRef = useRef(false);
+  const componentActiveRef = useRef(true);
+  const shouldRestoreDevicesRef = useRef(
+    initialStudioPreferences.devicesEnabled,
+  );
   const isRecording = studioState === "recording";
   const follower = useSpeechFollower(
     script.body,
@@ -239,6 +222,11 @@ export function Studio({
           },
         });
 
+        if (!componentActiveRef.current) {
+          stream.getTracks().forEach((track) => track.stop());
+          return false;
+        }
+
         const videoTrack = stream.getVideoTracks()[0];
         let videoSettings = videoTrack?.getSettings();
         if (videoTrack) {
@@ -248,6 +236,11 @@ export function Studio({
             // Keep the already high-resolution stream if a driver reports
             // capabilities that it cannot apply as a combined mode.
           }
+        }
+
+        if (!componentActiveRef.current) {
+          stream.getTracks().forEach((track) => track.stop());
+          return false;
         }
 
         const activeCameraId =
@@ -264,7 +257,8 @@ export function Studio({
             ? `${videoSettings.width} × ${videoSettings.height}`
             : "",
         );
-        saveDevicePreferences({
+        updateStudioPreferences({
+          devicesEnabled: true,
           cameraId: activeCameraId,
           microphoneId: activeMicrophoneId,
         });
@@ -274,6 +268,7 @@ export function Studio({
         window.setTimeout(attachPreview, 0);
         return true;
       } catch (caught) {
+        if (!componentActiveRef.current) return false;
         setError(
           caught instanceof DOMException && caught.name === "NotAllowedError"
             ? "Camera or microphone access was blocked. Allow both devices in your browser settings, then try again."
@@ -291,7 +286,7 @@ export function Studio({
         if (!streamRef.current) setStudioState("error");
         return false;
       } finally {
-        setSwitchingDevice(false);
+        if (componentActiveRef.current) setSwitchingDevice(false);
       }
     },
     [
@@ -301,6 +296,26 @@ export function Studio({
       selectedMicrophoneId,
     ],
   );
+
+  useEffect(() => {
+    if (!shouldRestoreDevicesRef.current) return;
+
+    const timer = window.setTimeout(() => {
+      if (!shouldRestoreDevicesRef.current) return;
+      shouldRestoreDevicesRef.current = false;
+      void enableDevices(
+        initialStudioPreferences.cameraId,
+        initialStudioPreferences.microphoneId,
+        false,
+      );
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [enableDevices, initialStudioPreferences]);
+
+  useEffect(() => {
+    updateStudioPreferences({ fontSize, promptPosition });
+  }, [fontSize, promptPosition]);
 
   const changeDevice = useCallback(
     async (kind: "camera" | "microphone", deviceId: string) => {
@@ -328,13 +343,13 @@ export function Studio({
           explicitDeviceSelectionRef.current = false;
           setSelectedCameraId(previousCameraId);
           setSelectedMicrophoneId(previousMicrophoneId);
-          saveDevicePreferences({
+          updateStudioPreferences({
             cameraId: previousCameraId,
             microphoneId: previousMicrophoneId,
           });
         }
       } else {
-        saveDevicePreferences({ cameraId, microphoneId });
+        updateStudioPreferences({ cameraId, microphoneId });
       }
     },
     [
@@ -586,7 +601,9 @@ export function Studio({
   }, [isRecording, movePrompt, startCountdown, stopRecording, studioState]);
 
   useEffect(() => {
+    componentActiveRef.current = true;
     return () => {
+      componentActiveRef.current = false;
       if (recorderRef.current?.state === "recording") {
         recorderRef.current.ondataavailable = null;
         recorderRef.current.onstop = null;
@@ -797,9 +814,15 @@ export function Studio({
               live preview.
             </p>
             {error && <div className="device-error">{error}</div>}
-            <button className="primary-button" onClick={() => void enableDevices()}>
+            <button
+              className="primary-button"
+              onClick={() => void enableDevices()}
+              disabled={switchingDevice}
+            >
               <Video size={18} />
-              Enable camera &amp; microphone
+              {switchingDevice
+                ? "Connecting camera & microphone…"
+                : "Enable camera & microphone"}
             </button>
             <span className="privacy-note">
               Your recording stays on this device.
