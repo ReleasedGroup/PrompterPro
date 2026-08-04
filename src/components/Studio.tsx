@@ -4,6 +4,7 @@ import {
   AlignVerticalJustifyStart,
   ArrowLeft,
   Camera,
+  Captions,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -32,7 +33,9 @@ import {
 import { formatDuration, safeFileName } from "../lib/format";
 import {
   isTargetOutside,
+  nextCaptionMode,
   nextPromptPosition,
+  type CaptionMode,
   type PromptPosition,
 } from "../lib/studioControls";
 import {
@@ -109,6 +112,9 @@ export function Studio({
   const [mirrored, setMirrored] = useState(false);
   const [promptPosition, setPromptPosition] = useState<PromptPosition>(
     initialStudioPreferences.promptPosition,
+  );
+  const [captionMode, setCaptionMode] = useState<CaptionMode>(
+    initialStudioPreferences.captionMode,
   );
   const [recordingUrl, setRecordingUrl] = useState("");
   const [recordingType, setRecordingType] = useState("");
@@ -314,8 +320,8 @@ export function Studio({
   }, [enableDevices, initialStudioPreferences]);
 
   useEffect(() => {
-    updateStudioPreferences({ fontSize, promptPosition });
-  }, [fontSize, promptPosition]);
+    updateStudioPreferences({ fontSize, promptPosition, captionMode });
+  }, [captionMode, fontSize, promptPosition]);
 
   const changeDevice = useCallback(
     async (kind: "camera" | "microphone", deviceId: string) => {
@@ -629,6 +635,12 @@ export function Studio({
   const downloadExtension = mp4Ready ? "mp4" : "webm";
   const promptPositionLabel =
     promptPosition[0].toUpperCase() + promptPosition.slice(1);
+  const captionModeLabel =
+    captionMode === "word"
+      ? "Word"
+      : captionMode === "line"
+        ? "Line"
+        : "Scroll";
   const PromptPositionIcon =
     promptPosition === "upper"
       ? AlignVerticalJustifyStart
@@ -758,6 +770,15 @@ export function Studio({
           </button>
           <button
             className="tool-button"
+            onClick={() => setCaptionMode((mode) => nextCaptionMode(mode))}
+            aria-label={`Captions: ${captionModeLabel}`}
+            title={`Captions: ${captionModeLabel}`}
+          >
+            <Captions size={17} />
+            {captionModeLabel}
+          </button>
+          <button
+            className="tool-button"
             onClick={() =>
               setPromptPosition((position) => nextPromptPosition(position))
             }
@@ -840,6 +861,7 @@ export function Studio({
               fontSize={fontSize}
               mirrored={mirrored}
               position={promptPosition}
+              captionMode={captionMode}
             />
           )}
 

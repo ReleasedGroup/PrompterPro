@@ -1102,12 +1102,14 @@ p {
   color: rgba(255, 255, 255, 0.24);
 }
 
-.prompt-word.current {
+.prompt-word.current,
+.prompt-word.current-line {
   color: var(--accent);
   text-shadow: 0 2px 18px rgba(232, 255, 103, 0.2);
 }
 
-.prompt-word.upcoming {
+.prompt-word.upcoming,
+.prompt-word.plain {
   color: rgba(255, 255, 255, 0.94);
 }
 

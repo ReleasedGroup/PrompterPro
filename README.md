@@ -14,6 +14,7 @@ heard again, it resumes. The prompt overlay is never burned into the recording.
   resolution-aware bitrate, and audio through the browser's `MediaRecorder`.
 - Follow spoken words with local, streaming sherpa-onnx recognition.
 - Pause prompt movement when speech leaves the script without pausing recording.
+- Choose current-word, current-line, or highlight-free prompt scrolling.
 - Place the prompt eye-line in the upper, middle, or lower part of the preview.
 - Review and save every finished take as an MP4 with H.264 video and AAC audio.
 - Install the app as a PWA or packaged Microsoft Store desktop app on Windows.

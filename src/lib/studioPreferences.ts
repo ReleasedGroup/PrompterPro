@@ -1,5 +1,7 @@
 import {
+  CAPTION_MODES,
   PROMPT_POSITIONS,
+  type CaptionMode,
   type PromptPosition,
 } from "./studioControls";
 
@@ -9,6 +11,7 @@ export interface StudioPreferences {
   microphoneId: string;
   fontSize: number;
   promptPosition: PromptPosition;
+  captionMode: CaptionMode;
 }
 
 interface PreferenceStorage {
@@ -27,6 +30,7 @@ export const DEFAULT_STUDIO_PREFERENCES: StudioPreferences = {
   microphoneId: "",
   fontSize: 42,
   promptPosition: "middle",
+  captionMode: "word",
 };
 
 function parseObject(value: string | null): Record<string, unknown> {
@@ -58,6 +62,12 @@ function parsePromptPosition(value: unknown): PromptPosition {
     : DEFAULT_STUDIO_PREFERENCES.promptPosition;
 }
 
+function parseCaptionMode(value: unknown): CaptionMode {
+  return CAPTION_MODES.includes(value as CaptionMode)
+    ? (value as CaptionMode)
+    : DEFAULT_STUDIO_PREFERENCES.captionMode;
+}
+
 export function loadStudioPreferences(
   storage: PreferenceStorage = localStorage,
 ): StudioPreferences {
@@ -80,6 +90,7 @@ export function loadStudioPreferences(
       microphoneId,
       fontSize: parseFontSize(saved.fontSize),
       promptPosition: parsePromptPosition(saved.promptPosition),
+      captionMode: parseCaptionMode(saved.captionMode),
     };
   } catch {
     return { ...DEFAULT_STUDIO_PREFERENCES };

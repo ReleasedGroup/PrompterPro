@@ -1,8 +1,19 @@
-import { useEffect, useMemo, useRef, type CSSProperties } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import type { FollowStatus } from "../hooks/useSpeechFollower";
 import { tokenizeScript } from "../lib/alignment";
 import {
   promptAnchor,
+  promptLineRange,
+  type CaptionMode,
+  type PromptLineRange,
   type PromptPosition,
 } from "../lib/studioControls";
 
@@ -13,6 +24,7 @@ interface TeleprompterOverlayProps {
   fontSize: number;
   mirrored: boolean;
   position: PromptPosition;
+  captionMode: CaptionMode;
 }
 
 export function TeleprompterOverlay({
@@ -22,14 +34,47 @@ export function TeleprompterOverlay({
   fontSize,
   mirrored,
   position,
+  captionMode,
 }: TeleprompterOverlayProps) {
   const words = useMemo(() => tokenizeScript(script), [script]);
-  const activeRef = useRef<HTMLSpanElement | null>(null);
+  const wordRefs = useRef<Array<HTMLSpanElement | null>>([]);
   const promptRef = useRef<HTMLDivElement | null>(null);
+  const [currentLine, setCurrentLine] = useState<PromptLineRange | null>(null);
   const anchor = promptAnchor(position);
 
+  const measureCurrentLine = useCallback(() => {
+    if (captionMode !== "line") {
+      setCurrentLine(null);
+      return;
+    }
+
+    const offsets = wordRefs.current
+      .slice(0, words.length)
+      .map((word) => word?.offsetTop ?? Number.NaN);
+    const nextLine = promptLineRange(offsets, currentIndex);
+    setCurrentLine((previousLine) =>
+      previousLine?.start === nextLine?.start &&
+      previousLine?.end === nextLine?.end
+        ? previousLine
+        : nextLine,
+    );
+  }, [captionMode, currentIndex, words.length]);
+
+  useLayoutEffect(() => {
+    measureCurrentLine();
+  }, [fontSize, measureCurrentLine, script]);
+
   useEffect(() => {
-    const activeWord = activeRef.current;
+    const prompt = promptRef.current;
+    if (captionMode !== "line" || !prompt) return;
+
+    const observer = new ResizeObserver(measureCurrentLine);
+    observer.observe(prompt);
+    return () => observer.disconnect();
+  }, [captionMode, measureCurrentLine]);
+
+  useEffect(() => {
+    const activeWord = wordRefs.current[currentIndex];
     const prompt = promptRef.current;
     if (!activeWord || !prompt) return;
 
@@ -44,7 +89,7 @@ export function TeleprompterOverlay({
         ? "auto"
         : "smooth",
     });
-  }, [anchor, currentIndex]);
+  }, [anchor, currentIndex, fontSize, script]);
 
   const positionStyles = {
     "--prompt-anchor": `${anchor * 100}%`,
@@ -67,17 +112,29 @@ export function TeleprompterOverlay({
         <div className="prompt-spacer prompt-spacer-start" />
         <p>
           {words.map((word, index) => {
+            const isCurrentLine =
+              captionMode === "line" &&
+              (currentLine
+                ? index >= currentLine.start && index <= currentLine.end
+                : index === currentIndex);
             const state =
-              index < currentIndex
-                ? "spoken"
-                : index === currentIndex
-                  ? "current"
-                  : "upcoming";
+              captionMode === "scroll"
+                ? "plain"
+                : isCurrentLine
+                  ? "current-line"
+                  : index < currentIndex
+                    ? "spoken"
+                    : index === currentIndex
+                      ? "current"
+                      : "upcoming";
             return (
               <span
                 key={`${index}-${word.normalized}`}
-                ref={index === currentIndex ? activeRef : null}
+                ref={(element) => {
+                  wordRefs.current[index] = element;
+                }}
                 className={`prompt-word ${state}`}
+                aria-current={index === currentIndex ? "true" : undefined}
               >
                 {word.display}
               </span>
@@ -88,7 +145,12 @@ export function TeleprompterOverlay({
       </div>
       {status === "off-script" && (
         <div className="off-script-banner">
-          Prompt paused · return to the highlighted words
+          Prompt paused · return to{" "}
+          {captionMode === "word"
+            ? "the highlighted word"
+            : captionMode === "line"
+              ? "the highlighted line"
+              : "the current prompt position"}
         </div>
       )}
     </div>
