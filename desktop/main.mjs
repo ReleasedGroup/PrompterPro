@@ -5,9 +5,11 @@ import {
   app,
   BrowserWindow,
   dialog,
+  ipcMain,
   session,
   shell,
 } from "electron";
+import { loadScriptStore, saveScriptStore } from "./script-store.mjs";
 
 const MODEL_DIRECTORY_NAME =
   "sherpa-onnx-streaming-zipformer-en-20M-2023-02-17";
@@ -18,6 +20,8 @@ let mainWindow = null;
 let localServer = null;
 let localServerProcess = null;
 let appUrl = null;
+let scriptSaveQueue = Promise.resolve();
+let readyToQuit = false;
 
 // Keep the existing Electron profile after the visible product rename so
 // scripts, device preferences, and other local browser data survive upgrades.
@@ -59,6 +63,25 @@ function configurePermissions() {
       );
     },
   );
+}
+
+function configureScriptStorage() {
+  ipcMain.handle("prompter:scripts:load", (event) => {
+    if (!isAppUrl(event.senderFrame?.url)) {
+      throw new Error("Script storage is only available to PrompterPro.");
+    }
+    return loadScriptStore(app.getPath("userData"));
+  });
+  ipcMain.handle("prompter:scripts:save", (event, scripts) => {
+    if (!isAppUrl(event.senderFrame?.url)) {
+      throw new Error("Script storage is only available to PrompterPro.");
+    }
+    const saveOperation = scriptSaveQueue
+      .catch(() => undefined)
+      .then(() => saveScriptStore(app.getPath("userData"), scripts));
+    scriptSaveQueue = saveOperation;
+    return saveOperation;
+  });
 }
 
 async function startLocalServer() {
@@ -160,6 +183,7 @@ async function createWindow() {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
+      preload: path.join(import.meta.dirname, "preload.cjs"),
       sandbox: true,
     },
   });
@@ -194,6 +218,7 @@ if (!hasSingleInstanceLock) {
       app.setAppUserModelId("ReleasedPtyLtd.PrompterPro");
       configurePermissions();
       await startLocalServer();
+      configureScriptStorage();
       await createWindow();
     })
     .catch((error) => {
@@ -209,7 +234,17 @@ if (!hasSingleInstanceLock) {
     }
   });
   app.on("window-all-closed", () => app.quit());
-  app.on("before-quit", () => {
+  app.on("before-quit", (event) => {
+    if (!readyToQuit) {
+      event.preventDefault();
+      void scriptSaveQueue
+        .catch((error) => console.error("Could not save scripts:", error))
+        .then(() => {
+          readyToQuit = true;
+          app.quit();
+        });
+      return;
+    }
     if (localServer?.listening) localServer.close();
     if (localServerProcess && !localServerProcess.killed) {
       localServerProcess.kill();

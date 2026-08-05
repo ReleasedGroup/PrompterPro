@@ -45,7 +45,10 @@ original `MediaStream`, not a canvas composition, so the overlay is not recorded
   recognizer lifecycle.
 - `src/hooks/useSpeechFollower.ts`: microphone PCM transport and prompt
   follow/off-script state.
-- `src/hooks/useLocalScripts.ts`: local persistence and CRUD.
+- `src/hooks/useLocalScripts.ts`: local persistence and CRUD. Browser/PWA builds
+  use `localStorage`; the Electron preload bridge writes the same library to the
+  stable application data directory so random loopback ports do not split it
+  across desktop sessions.
 - `src/components/Studio.tsx`: media device and recorder state machine.
 - `src/components/TeleprompterOverlay.tsx`: prompt rendering, eye-line, and
   current-word scrolling.
