@@ -21,13 +21,28 @@ permissions:
 
 jobs:
   package:
+    name: Package ${{ matrix.productName }}
     runs-on: windows-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: prompterpro
+            productName: PrompterPro
+            identityName: ReleasedPtyLtd.PrompterPro
+            productId: ""
+          - variant: simpleprompt
+            productName: SimplePrompt
+            identityName: ReleasedPtyLtd.SimplePrompt
+            productId: 9MT1X5BNTHQS
     env:
-      MS_STORE_PRODUCT_ID: ${{ vars.MS_STORE_PRODUCT_ID }}
-      MS_STORE_IDENTITY_NAME: ${{ vars.MS_STORE_IDENTITY_NAME }}
-      MS_STORE_PUBLISHER: ${{ vars.MS_STORE_PUBLISHER }}
-      MS_STORE_PUBLISHER_DISPLAY_NAME: ${{ vars.MS_STORE_PUBLISHER_DISPLAY_NAME }}
+      PROMPTER_VARIANT: ${{ matrix.variant }}
+      VITE_APP_VARIANT: ${{ matrix.variant }}
+      MS_STORE_PRODUCT_ID: ${{ matrix.productId || vars.MS_STORE_PRODUCT_ID }}
+      MS_STORE_IDENTITY_NAME: ${{ matrix.identityName }}
+      MS_STORE_PUBLISHER: CN=E3BDC624-0B0A-4256-85B0-5AE714EA8897
+      MS_STORE_PUBLISHER_DISPLAY_NAME: Released Pty Ltd
 
     steps:
       - name: Check out repository
@@ -80,8 +95,8 @@ jobs:
       - name: Upload MSIX bundle artifact
         uses: actions/upload-artifact@v7
         with:
-          name: PrompterPro-${{ env.MS_STORE_VERSION }}-x64-arm64
-          path: out/store/*.msixbundle
+          name: ${{ matrix.productName }}-${{ env.MS_STORE_VERSION }}-x64-arm64
+          path: out/store/${{ matrix.productName }}_*.msixbundle
           if-no-files-found: error
           compression-level: 0
 
@@ -129,6 +144,6 @@ jobs:
             --sellerId $env:SELLER_ID `
             --clientId $env:AZURE_AD_APPLICATION_CLIENT_ID `
             --clientSecret $env:AZURE_AD_APPLICATION_SECRET
-          $package = Get-ChildItem "out/store/*.msixbundle" |
+          $package = Get-ChildItem "out/store/${{ matrix.productName }}_*.msixbundle" |
             Select-Object -First 1
           msstore publish $package.FullName -id $env:MS_STORE_PRODUCT_ID

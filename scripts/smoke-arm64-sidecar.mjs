@@ -5,17 +5,21 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import WebSocket from "ws";
+import { getProductVariant } from "./product-variants.mjs";
 
 const require = createRequire(import.meta.url);
 const sherpa = require("sherpa-onnx-node");
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const rootDirectory = path.resolve(scriptDirectory, "..");
+const productVariant = getProductVariant(
+  process.env.PROMPTER_VARIANT || process.env.VITE_APP_VARIANT,
+);
 const packageOutputDirectory = process.env.PROMPTER_PACKAGE_OUTPUT_DIR
   ? path.resolve(rootDirectory, process.env.PROMPTER_PACKAGE_OUTPUT_DIR)
   : path.join(rootDirectory, "out");
 const arm64Directory = path.join(
   packageOutputDirectory,
-  "PrompterPro-win32-arm64",
+  `${productVariant.productName}-win32-arm64`,
 );
 const nodeExecutable = path.join(
   arm64Directory,
@@ -44,6 +48,7 @@ const sidecar = spawn(nodeExecutable, [serverEntry], {
     ...process.env,
     PORT: "0",
     PROMPTER_PRODUCTION: "1",
+    PROMPTER_PRODUCT_NAME: productVariant.productName,
     SHERPA_ONNX_MODEL_DIR: modelDirectory,
   },
   stdio: ["ignore", "pipe", "pipe", "ipc"],

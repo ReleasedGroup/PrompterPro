@@ -17,6 +17,7 @@ import {
   DEFAULT_STORE_IDENTITY,
   renderStoreManifest,
 } from "./store-manifest.mjs";
+import { getProductVariant } from "./product-variants.mjs";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const rootDirectory = path.resolve(scriptDirectory, "..");
@@ -33,6 +34,9 @@ const outputDirectory = process.env.PROMPTER_PACKAGE_OUTPUT_DIR
   : path.join(rootDirectory, "out");
 const packageJson = JSON.parse(
   await readFile(path.join(rootDirectory, "package.json"), "utf8"),
+);
+const productVariant = getProductVariant(
+  process.env.PROMPTER_VARIANT || process.env.VITE_APP_VARIANT,
 );
 const allowedAppEntries = new Set([
   "desktop",
@@ -121,8 +125,8 @@ for (const architecture of architectures) {
   console.log(`Packaging the ${architecture.name} Electron application...`);
   const packagePaths = await packager({
     dir: rootDirectory,
-    name: packageJson.productName,
-    executableName: packageJson.productName,
+    name: productVariant.productName,
+    executableName: productVariant.productName,
     platform: "win32",
     arch: architecture.name,
     out: outputDirectory,
@@ -136,10 +140,10 @@ for (const architecture of architectures) {
     buildVersion: packageJson.version,
     win32metadata: {
       CompanyName: packageJson.author,
-      FileDescription: packageJson.description,
-      ProductName: packageJson.productName,
-      InternalName: packageJson.productName,
-      OriginalFilename: `${packageJson.productName}.exe`,
+      FileDescription: productVariant.description,
+      ProductName: productVariant.productName,
+      InternalName: productVariant.productName,
+      OriginalFilename: `${productVariant.productName}.exe`,
       "requested-execution-level": "asInvoker",
     },
     ignore: shouldIgnorePackageFile,
@@ -153,7 +157,7 @@ for (const architecture of architectures) {
 
   const packageDirectory = packagePaths[0];
   await assertPeArchitecture(
-    path.join(packageDirectory, `${packageJson.productName}.exe`),
+    path.join(packageDirectory, `${productVariant.productName}.exe`),
     architecture.name,
   );
   await assertPackagedAppAllowList(
@@ -178,7 +182,7 @@ const msixOutputDirectory = path.join(outputDirectory, "store");
 await mkdir(msixOutputDirectory, { recursive: true });
 const bundlePath = path.join(
   msixOutputDirectory,
-  `${packageJson.productName}_${toSafeVersion(version)}_x64_arm64.msixbundle`,
+  `${productVariant.productName}_${toSafeVersion(version)}_x64_arm64.msixbundle`,
 );
 const winAppCli = path.join(
   rootDirectory,
@@ -358,15 +362,21 @@ async function addStoreManifest(packageDirectory, architecture) {
     architecture: architecture.name,
     identityName:
       process.env.MS_STORE_IDENTITY_NAME ||
-      DEFAULT_STORE_IDENTITY.identityName,
+      productVariant.store.identityName || DEFAULT_STORE_IDENTITY.identityName,
     minimumWindowsVersion: architecture.minimumWindowsVersion,
     publisher:
       process.env.MS_STORE_PUBLISHER ||
-      DEFAULT_STORE_IDENTITY.publisher,
+      productVariant.store.publisher || DEFAULT_STORE_IDENTITY.publisher,
     publisherDisplayName:
       process.env.MS_STORE_PUBLISHER_DISPLAY_NAME ||
+      productVariant.store.publisherDisplayName ||
       DEFAULT_STORE_IDENTITY.publisherDisplayName,
     version: process.env.MS_STORE_VERSION || packageJson.version,
+    displayName: productVariant.productName,
+    executableName: productVariant.productName,
+    applicationId: productVariant.applicationId,
+    description: productVariant.description,
+    backgroundColor: productVariant.backgroundColor,
   });
   await writeFile(
     path.join(packageDirectory, "Package.appxmanifest"),

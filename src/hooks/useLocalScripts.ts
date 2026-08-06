@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { loadScripts, parseScripts, saveScripts } from "../lib/scriptStorage";
 import type { PrompterScript, ScriptSource } from "../types";
+import { appBrand } from "../lib/appBrand";
 
 const sampleScript: PrompterScript = {
   id: "welcome-to-prompter",
-  title: "Welcome to PrompterPro",
+  title: `Welcome to ${appBrand.name}`,
   body:
     "Great delivery starts with a clear idea and the confidence to say it naturally.\n\n" +
-    "PrompterPro keeps your next words close to the camera, follows your voice, and waits when you improvise. " +
+    `${appBrand.name} keeps your next words close to the camera, follows your voice, and waits when you improvise. ` +
     "The recording keeps running, so you can stay present instead of worrying about the controls.\n\n" +
     "Take a breath, look toward the lens, and make the message your own.",
   source: "manual",

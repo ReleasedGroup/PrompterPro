@@ -15,10 +15,24 @@
   --muted: #8c949b;
   --muted-2: #626a71;
   --accent: #e8ff67;
+  --accent-rgb: 232, 255, 103;
   --accent-ink: #111508;
   --amber: #ffbd66;
   --red: #ff6259;
   --green: #79e89c;
+}
+
+:root[data-app-variant="simpleprompt"] {
+  --accent: #55dc82;
+  --accent-rgb: 85, 220, 130;
+  --accent-ink: #07150c;
+  --green: #55dc82;
+}
+
+:root[data-app-variant="simpleprompt"] body {
+  background:
+    radial-gradient(circle at 82% -15%, rgba(85, 220, 130, 0.08), transparent 28%),
+    var(--bg);
 }
 
 * {
@@ -36,7 +50,7 @@ body,
 body {
   min-height: 100vh;
   background:
-    radial-gradient(circle at 82% -15%, rgba(232, 255, 103, 0.06), transparent 28%),
+    radial-gradient(circle at 82% -15%, rgba(var(--accent-rgb), 0.06), transparent 28%),
     var(--bg);
   overflow: hidden;
 }
@@ -111,7 +125,7 @@ a:focus-visible {
   border-radius: 10px;
   color: var(--accent-ink);
   background: var(--accent);
-  box-shadow: 0 7px 24px rgba(232, 255, 103, 0.12);
+  box-shadow: 0 7px 24px rgba(var(--accent-rgb), 0.12);
 }
 
 .app-header nav {
@@ -235,19 +249,19 @@ p {
   align-items: center;
   gap: 11px;
   padding: 12px;
-  border: 1px solid rgba(232, 255, 103, 0.16);
+  border: 1px solid rgba(var(--accent-rgb), 0.16);
   border-radius: 12px;
   text-align: left;
   color: var(--text);
   background:
-    linear-gradient(120deg, rgba(232, 255, 103, 0.08), transparent 62%),
+    linear-gradient(120deg, rgba(var(--accent-rgb), 0.08), transparent 62%),
     #14181a;
   transition: border-color 160ms ease, transform 160ms ease;
 }
 
 .ai-draft-button:hover {
   transform: translateY(-1px);
-  border-color: rgba(232, 255, 103, 0.32);
+  border-color: rgba(var(--accent-rgb), 0.32);
 }
 
 .ai-draft-icon {
@@ -353,7 +367,7 @@ p {
 
 .source-dot[data-source="ai"] {
   background: var(--accent);
-  box-shadow: 0 0 0 3px rgba(232, 255, 103, 0.09);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.09);
 }
 
 .card-menu-button {
@@ -620,7 +634,7 @@ p {
   border: 1px solid var(--line-strong);
   border-radius: 18px;
   background:
-    radial-gradient(circle at 100% 0, rgba(232, 255, 103, 0.08), transparent 30%),
+    radial-gradient(circle at 100% 0, rgba(var(--accent-rgb), 0.08), transparent 30%),
     #15191c;
   box-shadow: 0 26px 90px rgba(0, 0, 0, 0.56);
 }
@@ -698,7 +712,7 @@ p {
 .generator-form input:focus,
 .generator-form textarea:focus,
 .generator-form select:focus {
-  border-color: rgba(232, 255, 103, 0.42);
+  border-color: rgba(var(--accent-rgb), 0.42);
 }
 
 .field-row {
@@ -782,7 +796,7 @@ p {
   grid-template-rows: 58px minmax(0, 1fr) 82px;
   padding: 0 26px 18px;
   background:
-    radial-gradient(circle at 50% 18%, rgba(232, 255, 103, 0.045), transparent 34%),
+    radial-gradient(circle at 50% 18%, rgba(var(--accent-rgb), 0.045), transparent 34%),
     #090b0c;
 }
 
@@ -910,7 +924,7 @@ p {
 }
 
 .devices-popover select:focus {
-  border-color: rgba(232, 255, 103, 0.42);
+  border-color: rgba(var(--accent-rgb), 0.42);
 }
 
 .devices-popover p {
@@ -958,7 +972,7 @@ p {
 
 .tool-button.active {
   color: var(--accent);
-  border-color: rgba(232, 255, 103, 0.25);
+  border-color: rgba(var(--accent-rgb), 0.25);
 }
 
 .font-control button {
@@ -1016,10 +1030,10 @@ p {
   display: grid;
   place-items: center;
   margin-bottom: 18px;
-  border: 1px solid rgba(232, 255, 103, 0.16);
+  border: 1px solid rgba(var(--accent-rgb), 0.16);
   border-radius: 17px;
   color: var(--accent);
-  background: rgba(232, 255, 103, 0.055);
+  background: rgba(var(--accent-rgb), 0.055);
 }
 
 .device-setup h2 {
@@ -1105,7 +1119,7 @@ p {
 .prompt-word.current,
 .prompt-word.current-line {
   color: var(--accent);
-  text-shadow: 0 2px 18px rgba(232, 255, 103, 0.2);
+  text-shadow: 0 2px 18px rgba(var(--accent-rgb), 0.2);
 }
 
 .prompt-word.upcoming,
@@ -1123,7 +1137,7 @@ p {
   transform: translateY(-50%);
   border-radius: 4px;
   background: var(--accent);
-  box-shadow: 0 0 16px rgba(232, 255, 103, 0.35);
+  box-shadow: 0 0 16px rgba(var(--accent-rgb), 0.35);
 }
 
 .prompt-fade {

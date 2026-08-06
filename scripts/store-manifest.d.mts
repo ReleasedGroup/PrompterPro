@@ -5,12 +5,17 @@ export interface StoreManifestValues {
   publisher: string;
   publisherDisplayName: string;
   version: string;
+  displayName: string;
+  executableName: string;
+  applicationId: string;
+  description: string;
+  backgroundColor: string;
 }
 
 export const DEFAULT_STORE_IDENTITY: Readonly<{
   identityName: "ReleasedPtyLtd.PrompterPro";
   publisher: "CN=E3BDC624-0B0A-4256-85B0-5AE714EA8897";
-  publisherDisplayName: "Released Pty Ltd";
+  publisherDisplayName: string;
 }>;
 
 export function toWindowsVersion(version: string): string;

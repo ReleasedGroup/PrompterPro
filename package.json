@@ -9,6 +9,9 @@
   "main": "desktop/main.mjs",
   "scripts": {
     "dev": "concurrently -k -n API,WEB -c cyan,magenta \"tsx watch server/index.ts\" \"vite\"",
+    "site:render": "tsx site/render-static.tsx",
+    "site:dev": "npm run site:render && vite site",
+    "site:build": "npm run site:render && tsc -p site/tsconfig.json --pretty false && vite build site",
     "build": "tsc -b && vite build",
     "build:server": "node scripts/build-server.mjs",
     "build:desktop": "npm run build && npm run build:server",

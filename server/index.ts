@@ -227,9 +227,10 @@ server.listen(port, "127.0.0.1", () => {
     type: "prompter:server-ready",
     port: activePort,
   });
+  const productName = process.env.PROMPTER_PRODUCT_NAME || "PrompterPro";
   console.log(
     production
-      ? `PrompterPro is running at http://127.0.0.1:${activePort}`
-      : `PrompterPro API is running at http://127.0.0.1:${activePort}`,
+      ? `${productName} is running at http://127.0.0.1:${activePort}`
+      : `${productName} API is running at http://127.0.0.1:${activePort}`,
   );
 });

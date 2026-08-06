@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { ArrowRight, Sparkles, X } from "lucide-react";
 import type { GenerateScriptInput } from "../types";
+import { appBrand } from "../lib/appBrand";
 
 interface AIGeneratorProps {
   onClose: () => void;
@@ -69,7 +70,7 @@ export function AIGenerator({ onClose, onGenerated }: AIGeneratorProps) {
         </div>
         <h2 id="generator-title">Turn an idea into something worth saying.</h2>
         <p className="muted">
-          Give PrompterPro the substance. You stay in control of every word.
+          Give {appBrand.name} the substance. You stay in control of every word.
         </p>
 
         <form onSubmit={handleSubmit} className="generator-form">
