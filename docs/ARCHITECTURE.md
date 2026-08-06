@@ -99,8 +99,9 @@ For each recognition update:
 8. Resume immediately when nearby script text matches again; silence alone does
    not move the cursor or stop recording.
 
-Alignment is deterministic and local. Prompt movement uses smooth scrolling,
-with reduced-motion preferences respected.
+Alignment is deterministic and local. Prompt movement uses a damped spring that
+preserves velocity as new word targets arrive, allowing it to accelerate and
+decelerate continuously. Reduced-motion preferences use immediate movement.
 
 ## AI generation
 

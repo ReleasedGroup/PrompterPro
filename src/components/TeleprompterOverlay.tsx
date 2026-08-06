@@ -10,6 +10,11 @@ import {
 import type { FollowStatus } from "../hooks/useSpeechFollower";
 import { tokenizeScript } from "../lib/alignment";
 import {
+  advancePromptScroll,
+  promptScrollSettled,
+  type PromptScrollState,
+} from "../lib/promptScroll";
+import {
   promptAnchor,
   promptLineRange,
   type CaptionMode,
@@ -39,8 +44,40 @@ export function TeleprompterOverlay({
   const words = useMemo(() => tokenizeScript(script), [script]);
   const wordRefs = useRef<Array<HTMLSpanElement | null>>([]);
   const promptRef = useRef<HTMLDivElement | null>(null);
+  const scrollAnimationRef = useRef<number | null>(null);
+  const scrollFrameTimeRef = useRef<number | null>(null);
+  const scrollTargetRef = useRef(0);
+  const scrollStateRef = useRef<PromptScrollState>({
+    position: 0,
+    velocity: 0,
+  });
   const [currentLine, setCurrentLine] = useState<PromptLineRange | null>(null);
   const anchor = promptAnchor(position);
+
+  const animateScroll = useCallback((timestamp: number) => {
+    const prompt = promptRef.current;
+    if (!prompt) {
+      scrollAnimationRef.current = null;
+      return;
+    }
+
+    const previousTimestamp = scrollFrameTimeRef.current ?? timestamp;
+    scrollFrameTimeRef.current = timestamp;
+    const nextState = advancePromptScroll(
+      scrollStateRef.current,
+      scrollTargetRef.current,
+      timestamp - previousTimestamp,
+    );
+    scrollStateRef.current = nextState;
+    prompt.scrollTop = nextState.position;
+
+    if (promptScrollSettled(nextState, scrollTargetRef.current)) {
+      scrollAnimationRef.current = null;
+      scrollFrameTimeRef.current = null;
+      return;
+    }
+    scrollAnimationRef.current = window.requestAnimationFrame(animateScroll);
+  }, []);
 
   const measureCurrentLine = useCallback(() => {
     if (captionMode !== "line") {
@@ -78,18 +115,45 @@ export function TeleprompterOverlay({
     const prompt = promptRef.current;
     if (!activeWord || !prompt) return;
 
-    const targetScrollTop =
-      activeWord.offsetTop +
-      activeWord.offsetHeight / 2 -
-      prompt.clientHeight * anchor;
+    const targetScrollTop = Math.min(
+      Math.max(
+        0,
+        activeWord.offsetTop +
+          activeWord.offsetHeight / 2 -
+          prompt.clientHeight * anchor,
+      ),
+      Math.max(0, prompt.scrollHeight - prompt.clientHeight),
+    );
+    scrollTargetRef.current = targetScrollTop;
 
-    prompt.scrollTo({
-      top: Math.max(0, targetScrollTop),
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-        ? "auto"
-        : "smooth",
-    });
-  }, [anchor, currentIndex, fontSize, script]);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      if (scrollAnimationRef.current !== null) {
+        window.cancelAnimationFrame(scrollAnimationRef.current);
+      }
+      scrollAnimationRef.current = null;
+      scrollFrameTimeRef.current = null;
+      scrollStateRef.current = { position: targetScrollTop, velocity: 0 };
+      prompt.scrollTop = targetScrollTop;
+      return;
+    }
+
+    if (scrollAnimationRef.current === null) {
+      scrollStateRef.current.position = prompt.scrollTop;
+      scrollFrameTimeRef.current = null;
+      scrollAnimationRef.current = window.requestAnimationFrame(animateScroll);
+    }
+  }, [anchor, animateScroll, currentIndex, fontSize, script]);
+
+  useEffect(
+    () => () => {
+      if (scrollAnimationRef.current !== null) {
+        window.cancelAnimationFrame(scrollAnimationRef.current);
+      }
+      scrollAnimationRef.current = null;
+      scrollFrameTimeRef.current = null;
+    },
+    [],
+  );
 
   const positionStyles = {
     "--prompt-anchor": `${anchor * 100}%`,
