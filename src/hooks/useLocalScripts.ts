@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { loadScripts, parseScripts, saveScripts } from "../lib/scriptStorage";
 import type { PrompterScript, ScriptSource } from "../types";
-
-const STORAGE_KEY = "prompter.scripts.v1";
 
 const sampleScript: PrompterScript = {
   id: "welcome-to-prompter",
@@ -16,23 +15,44 @@ const sampleScript: PrompterScript = {
   updatedAt: new Date().toISOString(),
 };
 
-function loadScripts(): PrompterScript[] {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return [sampleScript];
-    const parsed = JSON.parse(saved) as PrompterScript[];
-    return Array.isArray(parsed) ? parsed : [sampleScript];
-  } catch {
-    return [sampleScript];
-  }
-}
-
 export function useLocalScripts() {
-  const [scripts, setScripts] = useState<PrompterScript[]>(loadScripts);
+  const desktopStorage = window.prompterDesktop;
+  const [scripts, setScripts] = useState<PrompterScript[]>(() =>
+    desktopStorage ? [] : loadScripts(localStorage) ?? [sampleScript],
+  );
+  const [storageReady, setStorageReady] = useState(!desktopStorage);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(scripts));
-  }, [scripts]);
+    if (!desktopStorage) return;
+    let cancelled = false;
+    void desktopStorage
+      .loadScripts()
+      .then((saved) => {
+        if (cancelled) return;
+        setScripts(
+          parseScripts(saved) ?? loadScripts(localStorage) ?? [sampleScript],
+        );
+        setStorageReady(true);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setScripts(loadScripts(localStorage) ?? [sampleScript]);
+        setStorageReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [desktopStorage]);
+
+  useEffect(() => {
+    if (!storageReady) return;
+    saveScripts(scripts, localStorage);
+    if (desktopStorage) {
+      void desktopStorage
+        .saveScripts(scripts)
+        .catch((error) => console.error("Could not save scripts:", error));
+    }
+  }, [desktopStorage, scripts, storageReady]);
 
   const createScript = useCallback(
     (title = "Untitled script", body = "", source: ScriptSource = "manual") => {
