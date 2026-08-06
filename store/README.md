@@ -93,6 +93,10 @@ This writes `SimplePrompt_<version>_x64_arm64.msixbundle`. Use x64 Node.js for
 both product builds; the packager uses it to assemble the x64 application and
 the compatibility sidecar included in the ARM64 application.
 
+Each product has its own Windows artwork. PrompterPro uses `store/assets/` and
+SimplePrompt uses the green assets in `store/simpleprompt/assets/`; the
+packager selects the matching icon, tile, splash and Store logo automatically.
+
 The server build bundles ordinary JavaScript dependencies. Packaging retains
 only the FFmpeg executable and sherpa-onnx loader/native files outside that
 bundle, avoiding thousands of development and transitive dependency artifacts

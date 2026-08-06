@@ -7,6 +7,7 @@ export const PRODUCT_VARIANTS = Object.freeze({
   prompterpro: Object.freeze({
     key: "prompterpro",
     productName: "PrompterPro",
+    assetDirectory: "assets",
     applicationId: "Prompter",
     description:
       "An offline, voice-following teleprompter for polished video recording.",
@@ -20,6 +21,7 @@ export const PRODUCT_VARIANTS = Object.freeze({
   simpleprompt: Object.freeze({
     key: "simpleprompt",
     productName: "SimplePrompt",
+    assetDirectory: "simpleprompt/assets",
     applicationId: "SimplePrompt",
     description:
       "A private, voice-following teleprompter for clear video recording.",

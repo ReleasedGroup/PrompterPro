@@ -38,6 +38,10 @@ const packageJson = JSON.parse(
 const productVariant = getProductVariant(
   process.env.PROMPTER_VARIANT || process.env.VITE_APP_VARIANT,
 );
+const productAssetsDirectory = path.join(
+  storeDirectory,
+  productVariant.assetDirectory,
+);
 const allowedAppEntries = new Set([
   "desktop",
   "dist",
@@ -133,7 +137,7 @@ for (const architecture of architectures) {
     overwrite: true,
     prune: true,
     asar: architecture.asar,
-    icon: path.join(storeDirectory, "assets", "AppIcon.ico"),
+    icon: path.join(productAssetsDirectory, "AppIcon.ico"),
     extraResource: [modelDirectory],
     afterPrune: [removeUnneededRuntimeModules],
     appVersion: packageJson.version,
@@ -165,7 +169,7 @@ for (const architecture of architectures) {
     architecture.name,
   );
   await cp(
-    path.join(storeDirectory, "assets"),
+    productAssetsDirectory,
     path.join(packageDirectory, "Assets"),
     { recursive: true },
   );

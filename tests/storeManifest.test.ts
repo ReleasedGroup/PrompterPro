@@ -68,6 +68,7 @@ describe("Windows Store manifest", () => {
     expect(manifest).toContain('Executable="SimplePrompt.exe"');
     expect(manifest).toContain('Id="SimplePrompt"');
     expect(simplePrompt.store.productId).toBe("9MT1X5BNTHQS");
+    expect(simplePrompt.assetDirectory).toBe("simpleprompt/assets");
     expect(simplePrompt.store.packageFamilyName).toBe(
       "ReleasedPtyLtd.SimplePrompt_q0b077qanz1d8",
     );

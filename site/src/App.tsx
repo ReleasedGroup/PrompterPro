@@ -199,7 +199,7 @@ export default function App() {
           <span className="privacy-icon"><ShieldCheck size={25} /></span>
           <span className="kicker">Your voice is nobody else's business</span>
           <h2>Private means<br /><em>private.</em></h2>
-          <p>Voice recognition happens on your computer. Your recordings, scripts, and transcripts never leave it. No cloud processing. No quiet data collection.</p>
+          <p>Voice recognition and recording stay on your computer. Optional AI drafting sends only the details you enter in the draft form to OpenAI. Your local script library is never uploaded.</p>
           <div className="privacy-points">
             <span><Check size={15} /> On-device speech recognition</span>
             <span><Check size={15} /> Local script library</span>
@@ -225,7 +225,7 @@ export default function App() {
           <a className="button button-dark" href="https://apps.microsoft.com/detail/9MT1X5BNTHQS" target="_blank" rel="noreferrer">
             <Download size={19} /> Get SimplePrompt
           </a>
-          <small>Windows 10 & 11 · $1.99 per month · No account needed</small>
+          <small>Windows 11 · $1.99 per month · No account needed</small>
         </div>
         <WandSparkles className="download-spark spark-one" />
         <WandSparkles className="download-spark spark-two" />

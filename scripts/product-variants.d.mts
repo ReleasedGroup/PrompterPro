@@ -1,6 +1,7 @@
 export interface ProductVariant {
   readonly key: "prompterpro" | "simpleprompt";
   readonly productName: "PrompterPro" | "SimplePrompt";
+  readonly assetDirectory: string;
   readonly applicationId: string;
   readonly description: string;
   readonly backgroundColor: string;
