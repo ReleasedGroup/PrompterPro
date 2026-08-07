@@ -6,6 +6,15 @@ import {
   renderStoreManifest,
   toWindowsVersion,
 } from "../scripts/store-manifest.mjs";
+import { PRODUCT_VARIANTS } from "../scripts/product-variants.mjs";
+
+const prompterProManifestValues = {
+  displayName: PRODUCT_VARIANTS.prompterpro.productName,
+  executableName: PRODUCT_VARIANTS.prompterpro.productName,
+  applicationId: PRODUCT_VARIANTS.prompterpro.applicationId,
+  description: PRODUCT_VARIANTS.prompterpro.description,
+  backgroundColor: PRODUCT_VARIANTS.prompterpro.backgroundColor,
+};
 
 describe("Windows Store manifest", () => {
   it("uses the Partner Center identity and PrompterPro product metadata", () => {
@@ -18,6 +27,7 @@ describe("Windows Store manifest", () => {
       ...DEFAULT_STORE_IDENTITY,
       minimumWindowsVersion: "10.0.22000.0",
       version: "1.2.3",
+      ...prompterProManifestValues,
     });
 
     expect(manifest).toContain('Name="ReleasedPtyLtd.PrompterPro"');
@@ -31,6 +41,40 @@ describe("Windows Store manifest", () => {
     expect(manifest).toContain('Executable="PrompterPro.exe"');
     expect(manifest).toContain('DisplayName="PrompterPro"');
     expect(manifest).toContain('ShortName="PrompterPro"');
+  });
+
+  it("renders the SimplePrompt Store identity and product metadata", () => {
+    const template = readFileSync(
+      new URL("../store/Package.appxmanifest.template", import.meta.url),
+      "utf8",
+    );
+    const simplePrompt = PRODUCT_VARIANTS.simpleprompt;
+    const manifest = renderStoreManifest(template, {
+      architecture: "arm64",
+      identityName: simplePrompt.store.identityName,
+      publisher: simplePrompt.store.publisher,
+      publisherDisplayName: simplePrompt.store.publisherDisplayName,
+      minimumWindowsVersion: "10.0.22000.0",
+      version: "1.2.3",
+      displayName: simplePrompt.productName,
+      executableName: simplePrompt.productName,
+      applicationId: simplePrompt.applicationId,
+      description: simplePrompt.description,
+      backgroundColor: simplePrompt.backgroundColor,
+    });
+
+    expect(manifest).toContain('Name="ReleasedPtyLtd.SimplePrompt"');
+    expect(manifest).toContain('<DisplayName>SimplePrompt</DisplayName>');
+    expect(manifest).toContain('Executable="SimplePrompt.exe"');
+    expect(manifest).toContain('Id="SimplePrompt"');
+    expect(simplePrompt.store.productId).toBe("9MT1X5BNTHQS");
+    expect(simplePrompt.assetDirectory).toBe("simpleprompt/assets");
+    expect(simplePrompt.store.packageFamilyName).toBe(
+      "ReleasedPtyLtd.SimplePrompt_q0b077qanz1d8",
+    );
+    expect(simplePrompt.store.packageSid).toBe(
+      "S-1-15-2-2676728462-2596204801-2700890954-455437082-720273692-286854053-1939976512",
+    );
   });
 
   it("converts semantic versions to four-part MSIX versions", () => {
@@ -60,6 +104,7 @@ describe("Windows Store manifest", () => {
           publisher: "CN=Released Group",
           publisherDisplayName: "Released Pty Ltd",
           version: "1.2.3",
+          ...prompterProManifestValues,
         },
       ),
     ).toBe(
@@ -76,6 +121,7 @@ describe("Windows Store manifest", () => {
         publisher: "CN=Released Group",
         publisherDisplayName: "Released Pty Ltd",
         version: "1.2.3",
+        ...prompterProManifestValues,
       }),
     ).toThrow(/x64 or arm64/);
   });

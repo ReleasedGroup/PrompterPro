@@ -15,6 +15,22 @@ const MODEL_DIRECTORY_NAME =
   "sherpa-onnx-streaming-zipformer-en-20M-2023-02-17";
 const BACKGROUND_COLOR = "#0b0d0f";
 const LEGACY_USER_DATA_DIRECTORY_NAME = "Prompter";
+const executableName = path.basename(
+  process.execPath,
+  path.extname(process.execPath),
+);
+const desktopBrand =
+  executableName.toLowerCase() === "simpleprompt"
+    ? {
+        name: "SimplePrompt",
+        appUserModelId: "ReleasedPtyLtd.SimplePrompt",
+        userDataDirectoryName: "SimplePrompt",
+      }
+    : {
+        name: "PrompterPro",
+        appUserModelId: "ReleasedPtyLtd.PrompterPro",
+        userDataDirectoryName: LEGACY_USER_DATA_DIRECTORY_NAME,
+      };
 
 let mainWindow = null;
 let localServer = null;
@@ -27,7 +43,7 @@ let readyToQuit = false;
 // scripts, device preferences, and other local browser data survive upgrades.
 app.setPath(
   "userData",
-  path.join(app.getPath("appData"), LEGACY_USER_DATA_DIRECTORY_NAME),
+  path.join(app.getPath("appData"), desktopBrand.userDataDirectoryName),
 );
 
 function isLoopbackUrl(value) {
@@ -68,13 +84,17 @@ function configurePermissions() {
 function configureScriptStorage() {
   ipcMain.handle("prompter:scripts:load", (event) => {
     if (!isAppUrl(event.senderFrame?.url)) {
-      throw new Error("Script storage is only available to PrompterPro.");
+      throw new Error(
+        `Script storage is only available to ${desktopBrand.name}.`,
+      );
     }
     return loadScriptStore(app.getPath("userData"));
   });
   ipcMain.handle("prompter:scripts:save", (event, scripts) => {
     if (!isAppUrl(event.senderFrame?.url)) {
-      throw new Error("Script storage is only available to PrompterPro.");
+      throw new Error(
+        `Script storage is only available to ${desktopBrand.name}.`,
+      );
     }
     const saveOperation = scriptSaveQueue
       .catch(() => undefined)
@@ -87,6 +107,7 @@ function configureScriptStorage() {
 async function startLocalServer() {
   process.env.PORT = "0";
   process.env.PROMPTER_PRODUCTION = "1";
+  process.env.PROMPTER_PRODUCT_NAME = desktopBrand.name;
   process.env.SHERPA_ONNX_MODEL_DIR = app.isPackaged
     ? path.join(process.resourcesPath, MODEL_DIRECTORY_NAME)
     : path.join(app.getAppPath(), ".models", MODEL_DIRECTORY_NAME);
@@ -104,7 +125,9 @@ async function startLocalServer() {
 
   const address = localServer.address();
   if (!address || typeof address === "string") {
-    throw new Error("PrompterPro could not reserve a local server port.");
+    throw new Error(
+      `${desktopBrand.name} could not reserve a local server port.`,
+    );
   }
   appUrl = `http://127.0.0.1:${address.port}`;
 }
@@ -169,10 +192,12 @@ async function startArm64Sidecar() {
 }
 
 async function createWindow() {
-  if (!appUrl) throw new Error("The local PrompterPro server is not ready.");
+  if (!appUrl) {
+    throw new Error(`The local ${desktopBrand.name} server is not ready.`);
+  }
 
   mainWindow = new BrowserWindow({
-    title: "PrompterPro",
+    title: desktopBrand.name,
     width: 1440,
     height: 960,
     minWidth: 1040,
@@ -215,7 +240,7 @@ if (!hasSingleInstanceLock) {
 
   app.whenReady()
     .then(async () => {
-      app.setAppUserModelId("ReleasedPtyLtd.PrompterPro");
+      app.setAppUserModelId(desktopBrand.appUserModelId);
       configurePermissions();
       await startLocalServer();
       configureScriptStorage();
@@ -224,7 +249,7 @@ if (!hasSingleInstanceLock) {
     .catch((error) => {
       const message =
         error instanceof Error ? error.message : "Unknown startup error";
-      dialog.showErrorBox("PrompterPro could not start", message);
+      dialog.showErrorBox(`${desktopBrand.name} could not start`, message);
       app.quit();
     });
 

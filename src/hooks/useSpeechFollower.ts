@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { alignTranscript, wordsFromText } from "../lib/alignment";
+import { appBrand } from "../lib/appBrand";
 import {
   stabilizeAdvance,
   type PendingAdvance,
@@ -198,7 +199,7 @@ export function useSpeechFollower(
         if (!disposed && !failureReported) {
           failureReported = true;
           setErrorMessage(
-            "The local speech engine could not be reached. Keep the PrompterPro API running.",
+            `The local speech engine could not be reached. Keep the ${appBrand.name} API running.`,
           );
           setStatus("error");
         }

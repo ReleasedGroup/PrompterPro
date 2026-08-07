@@ -1,8 +1,8 @@
 # Microsoft Store release guide
 
-PrompterPro is packaged as native x64 and ARM64 Electron desktop applications and
-then combined into an unsigned MSIX bundle. Microsoft Store signs the accepted
-bundle during submission.
+PrompterPro and SimplePrompt are packaged as native x64 and ARM64 Electron
+desktop applications and then combined into separate unsigned MSIX bundles.
+Microsoft Store signs each accepted bundle during submission.
 
 The ARM64 shell uses a bundled x64 Node sidecar through Windows 11's
 compatibility layer because the offline sherpa runtime and FFmpeg do not publish
@@ -26,9 +26,10 @@ The Store bundle therefore targets Windows 11 for both architecture slices.
 Repository variables:
 
 - `MS_STORE_PRODUCT_ID`
-- `MS_STORE_IDENTITY_NAME`
-- `MS_STORE_PUBLISHER`
-- `MS_STORE_PUBLISHER_DISPLAY_NAME`
+
+`MS_STORE_PRODUCT_ID` is the PrompterPro Store ID. SimplePrompt's Store ID and
+both products' Partner Center identities are versioned in the release matrix and
+[`simpleprompt/STORE_DETAILS.md`](simpleprompt/STORE_DETAILS.md).
 
 The packager defaults to the production `ReleasedPtyLtd.PrompterPro` identity,
 its Partner Center publisher certificate subject and `Released Pty Ltd`.
@@ -76,6 +77,26 @@ submitted as-is. Sideloading requires a certificate whose subject matches the
 manifest publisher; use the identity environment variables only when a
 deliberate development identity is needed.
 
+To build SimplePrompt locally, set the flavour and its Store identity before
+running the same packaging command:
+
+```powershell
+$env:PROMPTER_VARIANT = "simpleprompt"
+$env:VITE_APP_VARIANT = "simpleprompt"
+$env:MS_STORE_IDENTITY_NAME = "ReleasedPtyLtd.SimplePrompt"
+$env:MS_STORE_PUBLISHER = "CN=E3BDC624-0B0A-4256-85B0-5AE714EA8897"
+$env:MS_STORE_PUBLISHER_DISPLAY_NAME = "Released Pty Ltd"
+npm.cmd run package:windows
+```
+
+This writes `SimplePrompt_<version>_x64_arm64.msixbundle`. Use x64 Node.js for
+both product builds; the packager uses it to assemble the x64 application and
+the compatibility sidecar included in the ARM64 application.
+
+Each product has its own Windows artwork. PrompterPro uses `store/assets/` and
+SimplePrompt uses the green assets in `store/simpleprompt/assets/`; the
+packager selects the matching icon, tile, splash and Store logo automatically.
+
 The server build bundles ordinary JavaScript dependencies. Packaging retains
 only the FFmpeg executable and sherpa-onnx loader/native files outside that
 bundle, avoiding thousands of development and transitive dependency artifacts
@@ -93,11 +114,12 @@ npm.cmd run speech:smoke:arm64
 
 ## Automated releases
 
-The Store release workflow validates and uploads an MSIX bundle artifact for a
-`vMAJOR.MINOR.PATCH` tag or a manual run. Publishing is attempted for a tag, or
-when **Publish to Microsoft Store** is selected manually. Store identity
-variables enable the publish steps; missing authentication secrets then fail
-the workflow with an explicit configuration error.
+The Store release workflow runs a two-product matrix and uploads separate
+PrompterPro and SimplePrompt MSIX bundle artifacts for a `vMAJOR.MINOR.PATCH`
+tag or manual run. Publishing is attempted for a tag, or when **Publish to
+Microsoft Store** is selected manually. A Store ID enables publishing for each
+matrix entry; missing authentication secrets then fail that entry with an
+explicit configuration error.
 
 Before a production release:
 

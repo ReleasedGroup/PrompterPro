@@ -1,11 +1,9 @@
 const WINDOWS_VERSION_PATTERN = /^\d+(?:\.\d+){0,3}$/;
 const WINDOWS_ARCHITECTURES = new Set(["x64", "arm64"]);
 
-export const DEFAULT_STORE_IDENTITY = Object.freeze({
-  identityName: "ReleasedPtyLtd.PrompterPro",
-  publisher: "CN=E3BDC624-0B0A-4256-85B0-5AE714EA8897",
-  publisherDisplayName: "Released Pty Ltd",
-});
+import { PRODUCT_VARIANTS } from "./product-variants.mjs";
+
+export const DEFAULT_STORE_IDENTITY = PRODUCT_VARIANTS.prompterpro.store;
 
 export function toWindowsVersion(version) {
   const numericVersion = version.split("-", 1)[0];
@@ -45,6 +43,11 @@ export function renderStoreManifest(template, values) {
     "__VERSION__": toWindowsVersion(values.version),
     "__PROCESSOR_ARCHITECTURE__": values.architecture,
     "__MIN_WINDOWS_VERSION__": values.minimumWindowsVersion,
+    "__DISPLAY_NAME__": values.displayName,
+    "__EXECUTABLE_NAME__": values.executableName,
+    "__APPLICATION_ID__": values.applicationId,
+    "__DESCRIPTION__": values.description,
+    "__BACKGROUND_COLOR__": values.backgroundColor,
   };
 
   let manifest = template;
