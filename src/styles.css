@@ -1231,6 +1231,137 @@ p {
   font-weight: 700;
 }
 
+.export-settings {
+  position: absolute;
+  z-index: 7;
+  top: 16px;
+  right: 16px;
+  width: min(320px, calc(100% - 32px));
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 13px;
+  background: rgba(8, 10, 11, 0.86);
+  box-shadow: 0 14px 42px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(14px);
+}
+
+.export-settings header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--accent);
+}
+
+.export-settings header strong,
+.export-settings header span {
+  display: block;
+}
+
+.export-settings header strong {
+  color: #f1f3ef;
+  font-size: 11px;
+}
+
+.export-settings header span,
+.export-settings small {
+  color: #727a7f;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.export-mode {
+  display: grid;
+  grid-template-columns: 0.7fr 1.3fr;
+  gap: 5px;
+  margin: 12px 0 10px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #0e1113;
+}
+
+.export-mode button {
+  min-height: 32px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 6px;
+  color: #747c82;
+  background: transparent;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.export-mode button.selected {
+  color: var(--accent-ink);
+  background: var(--accent);
+}
+
+.export-settings label {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 9px;
+}
+
+.export-settings label > span {
+  color: #aab0b4;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.export-settings select {
+  min-width: 0;
+  height: 34px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  outline: 0;
+  color: #edf0eb;
+  background: #111416;
+  font-size: 10px;
+}
+
+.export-settings select:focus {
+  border-color: rgba(var(--accent-rgb), 0.42);
+}
+
+.export-settings small {
+  display: block;
+}
+
+.subtitle-preview {
+  position: absolute;
+  z-index: 6;
+  left: 50%;
+  bottom: 8.5%;
+  max-width: min(86%, 1100px);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 0.32em;
+  padding: 0.2em 0.42em 0.26em;
+  border-radius: 8px;
+  color: #f6f8f5;
+  background: rgba(6, 8, 9, 0.68);
+  font-size: clamp(20px, 3.2vw, 56px);
+  font-weight: 800;
+  line-height: 1.12;
+  text-align: center;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95);
+  translate: -50% 0;
+  pointer-events: none;
+}
+
+.subtitle-preview span {
+  white-space: nowrap;
+}
+
+.subtitle-preview span.active {
+  color: var(--accent);
+  scale: 1.08;
+}
+
 .export-error {
   position: absolute;
   z-index: 5;

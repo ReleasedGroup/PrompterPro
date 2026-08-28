@@ -16,7 +16,8 @@ heard again, it resumes. The prompt overlay is never burned into the recording.
 - Pause prompt movement when speech leaves the script without pausing recording.
 - Choose current-word, current-line, or highlight-free prompt scrolling.
 - Place the prompt eye-line in the upper, middle, or lower part of the preview.
-- Review and save every finished take as an MP4 with H.264 video and AAC audio.
+- Review and export either a clean take or an H.264/AAC MP4 with a polished
+  single-line lower third that highlights each spoken word in a chosen font.
 - Install the app as a PWA or packaged Microsoft Store desktop app on Windows.
 
 ## Run locally
@@ -77,7 +78,8 @@ to exercise the same loopback WebSocket used by Studio.
 The complete MVP is targeted at the packaged Windows desktop app and current
 Edge or Chrome on Windows. The app records native MP4 when available; otherwise
 the local API converts the browser's WebM take to MP4 with its bundled FFmpeg
-binary. Speech-following streams PCM only to the PrompterPro API at `127.0.0.1`,
+binary. Optional highlighted subtitles are rendered by that same local binary.
+Speech-following streams PCM only to the PrompterPro API at `127.0.0.1`,
 where sherpa-onnx performs recognition. If the local model is not installed,
 recording still works and the prompt can be moved with the on-screen controls
 or arrow keys.
@@ -97,8 +99,8 @@ Set `SHERPA_ONNX_MODEL_DIR` to use the same model from another location, or
 
 Scripts are stored locally in browser storage. Camera and microphone media stay
 on this computer. Microphone samples and transcripts used for prompt following
-travel only over the loopback interface to the local sherpa-onnx engine. A WebM
-take may pass through the same local API for MP4 conversion and is removed from
-its temporary folder after export. Only the optional AI generation form is sent
-to OpenAI; camera, microphone, recordings, transcripts, and the script library
-are not.
+travel only over the loopback interface to the local sherpa-onnx engine. A take
+may pass through the same local API for MP4 conversion or subtitle rendering and
+is removed from its temporary folder after export. Only the optional AI
+generation form is sent to OpenAI; camera, microphone, recordings, transcripts,
+and the script library are not.

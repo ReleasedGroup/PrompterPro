@@ -27,6 +27,13 @@ flowchart LR
   PCM -->|"Loopback WebSocket"| STT["Local sherpa-onnx"]
   STT --> ALIGN["Bounded fuzzy alignment"]
   ALIGN --> OVERLAY["Prompt overlay"]
+  ALIGN --> WORDS["Timed spoken words"]
+  WORDS --> ASS["Local ASS lower third"]
+  FILE --> STYLE{"Subtitle export?"}
+  STYLE -->|"No"| DOWNLOAD["Clean download"]
+  STYLE -->|"Yes"| ASS
+  ASS --> RENDER["Local FFmpeg subtitle render"]
+  RENDER --> DOWNLOAD
   UI --> API["Local Node API"]
   API --> OAI["OpenAI Responses API"]
   OAI --> API
@@ -50,10 +57,14 @@ original `MediaStream`, not a canvas composition, so the overlay is not recorded
   stable application data directory so random loopback ports do not split it
   across desktop sessions.
 - `src/components/Studio.tsx`: media device and recorder state machine.
+- `src/lib/videoExport.ts`: spoken-word timing backfill, lower-third paging,
+  preview selection, and the local binary export envelope.
 - `src/components/TeleprompterOverlay.tsx`: prompt rendering, eye-line, and
   current-word scrolling.
 - `server/index.ts`: input validation, local MP4 conversion, and server-side
   OpenAI call.
+- `server/subtitleExport.ts`: strict caption-envelope parsing and deterministic
+  ASS generation with active-word styling.
 - `scripts/build-server.mjs`: bundles the local API's JavaScript dependencies
   while leaving only FFmpeg and the native speech loader external.
 - `desktop/main.mjs`: hardened Electron window, media permissions and lifecycle
@@ -74,6 +85,13 @@ Studio prefers a browser-native MP4 MediaRecorder profile. Where that is not
 available, it records a WebM/Opus take and posts it only to the loopback API.
 The API converts it to H.264/AAC MP4 with the bundled FFmpeg executable, returns
 the file for review/save, and removes its temporary working directory.
+
+Speech-confirmed cursor advances are timestamped during recording. Review keeps
+the clean recording as the source of truth and can preview those words as a
+single lower-third line. A subtitle export sends the clean take, selected font,
+and validated word timings only to the loopback API. The API builds a temporary
+ASS track, re-encodes the video with libass so the active word is enlarged and
+accented, returns an H.264/AAC MP4, and removes all temporary inputs.
 
 ## Alignment approach
 
@@ -151,6 +169,7 @@ before promising equivalent background behavior or codec support.
 - Recognition speed and quality depend on the Windows computer's CPU and
   microphone.
 - Long recordings consume memory until stopped and downloaded.
-- MP4 fallback conversion briefly uses additional local disk, CPU, and memory.
+- MP4 fallback conversion and optional subtitle rendering briefly use additional
+  local disk, CPU, and memory.
 - Scripts do not yet sync across devices or users.
 - There is no account, cloud library, or server-side recording store.

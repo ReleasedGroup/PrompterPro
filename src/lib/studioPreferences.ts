@@ -4,6 +4,11 @@ import {
   type CaptionMode,
   type PromptPosition,
 } from "./studioControls";
+import {
+  VIDEO_EXPORT_FONTS,
+  type VideoExportFont,
+  type VideoExportMode,
+} from "./videoExport";
 
 export interface StudioPreferences {
   devicesEnabled: boolean;
@@ -12,6 +17,8 @@ export interface StudioPreferences {
   fontSize: number;
   promptPosition: PromptPosition;
   captionMode: CaptionMode;
+  exportMode: VideoExportMode;
+  exportFont: VideoExportFont;
 }
 
 interface PreferenceStorage {
@@ -31,6 +38,8 @@ export const DEFAULT_STUDIO_PREFERENCES: StudioPreferences = {
   fontSize: 42,
   promptPosition: "middle",
   captionMode: "word",
+  exportMode: "clean",
+  exportFont: "Arial Black",
 };
 
 function parseObject(value: string | null): Record<string, unknown> {
@@ -68,6 +77,16 @@ function parseCaptionMode(value: unknown): CaptionMode {
     : DEFAULT_STUDIO_PREFERENCES.captionMode;
 }
 
+function parseExportMode(value: unknown): VideoExportMode {
+  return value === "subtitles" ? "subtitles" : "clean";
+}
+
+function parseExportFont(value: unknown): VideoExportFont {
+  return VIDEO_EXPORT_FONTS.some((font) => font.family === value)
+    ? (value as VideoExportFont)
+    : DEFAULT_STUDIO_PREFERENCES.exportFont;
+}
+
 export function loadStudioPreferences(
   storage: PreferenceStorage = localStorage,
 ): StudioPreferences {
@@ -91,6 +110,8 @@ export function loadStudioPreferences(
       fontSize: parseFontSize(saved.fontSize),
       promptPosition: parsePromptPosition(saved.promptPosition),
       captionMode: parseCaptionMode(saved.captionMode),
+      exportMode: parseExportMode(saved.exportMode),
+      exportFont: parseExportFont(saved.exportFont),
     };
   } catch {
     return { ...DEFAULT_STUDIO_PREFERENCES };

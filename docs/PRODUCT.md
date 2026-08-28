@@ -19,7 +19,9 @@ fixed scroll speed.
 7. If speech does not match nearby script words, prompt movement pauses and the
    recording continues.
 8. Resume from nearby script text and prompt movement catches up.
-9. Stop, review, and save the finished MP4.
+9. Stop and review the finished take.
+10. Save a clean video, or choose a font and export a subtitled MP4 whose
+    lower-third line highlights the word currently being spoken.
 
 ## Information architecture
 
@@ -43,7 +45,7 @@ recording and lets Studio devote most of the screen to eye-line and readability.
 | Recording / following | Green status and moving current phrase | Stop, move prompt manually |
 | Recording / off script | Amber status; prompt stays put | Keep speaking or return to nearby text |
 | Processing | Recording finalization | Wait briefly |
-| Review | MP4 playback, save, new take | Save MP4 or record again |
+| Review | Playback plus clean/subtitled style and font controls | Export video or record again |
 | Error | Specific recovery message | Retry devices or use manual prompt |
 
 ## Voice-following behavior
@@ -66,8 +68,8 @@ recording and lets Studio devote most of the screen to eye-line and readability.
 - Large controls with visible keyboard focus.
 - `Space` starts/stops recording outside editable fields.
 - Arrow keys move the prompt in Studio.
-- Prompt font size, vertical eye-line, mirror mode, and word/line highlighting
-  are adjustable.
+- Prompt font size, vertical eye-line, mirror mode, word/line highlighting, and
+  exported subtitle font are adjustable.
 - Reduced-motion preferences disable smooth scrolling and decorative animation.
 - The presenter must explicitly grant camera and microphone permissions.
 
@@ -86,6 +88,8 @@ recording and lets Studio devote most of the screen to eye-line and readability.
 
 - A user can complete the full journey without a developer tool.
 - A saved MP4 contains synchronized H.264 video and AAC microphone audio.
+- Subtitle export shows one lower-third line and highlights the active spoken
+  word without adding the teleprompter overlay to the clean source.
 - Prompt movement responds to matching speech and stops for unmatched speech.
 - Recording duration continues to increase while prompt status is off-script.
 - Script CRUD persists after a refresh.
