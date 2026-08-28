@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
@@ -13,6 +14,10 @@ import {
   attachLocalSpeechServer,
   getSpeechModelStatus,
 } from "./localSpeech.js";
+import {
+  buildAssSubtitles,
+  parseCaptionExportBody,
+} from "./subtitleExport.js";
 
 const currentFile = fileURLToPath(import.meta.url);
 const serverDirectory = path.dirname(currentFile);
@@ -27,7 +32,27 @@ const production =
   process.env.PROMPTER_PRODUCTION === "1";
 const execFileAsync = promisify(execFile);
 const require = createRequire(import.meta.url);
-const ffmpegPath = require("ffmpeg-static") as string | null;
+const importedFfmpegPath = require("ffmpeg-static") as string | null;
+
+function resolveFfmpegPath(): string | null {
+  const candidates = [
+    importedFfmpegPath,
+    importedFfmpegPath?.replace("app.asar", "app.asar.unpacked"),
+    path.join(rootDirectory, "node_modules", "ffmpeg-static", "ffmpeg.exe"),
+  ];
+  return (
+    candidates.find((candidate) => candidate && existsSync(candidate)) ?? null
+  );
+}
+
+function assVideoFilter(): string {
+  // The bundled Windows FFmpeg build uses fontconfig's system-font provider.
+  // Keeping the ASS path relative also avoids drive-letter escaping being
+  // misread by libass as another filter option.
+  return "ass=captions.ass";
+}
+
+const ffmpegPath = resolveFfmpegPath();
 
 app.disable("x-powered-by");
 
@@ -111,6 +136,116 @@ app.post(
       response.status(500).json({
         error:
           "MP4 export failed. Check that the recording contains both video and audio.",
+      });
+    }
+  },
+);
+
+app.post(
+  "/api/recordings/subtitles",
+  express.raw({
+    type: "application/x-prompter-export",
+    limit: "1gb",
+  }),
+  async (request, response) => {
+    if (!ffmpegPath) {
+      response.status(503).json({
+        error: "Subtitle export is not available on this computer.",
+      });
+      return;
+    }
+    if (!Buffer.isBuffer(request.body) || request.body.length === 0) {
+      response.status(400).json({ error: "No recorded video was supplied." });
+      return;
+    }
+
+    let parsedExport;
+    try {
+      parsedExport = parseCaptionExportBody(request.body);
+    } catch (error) {
+      response.status(400).json({
+        error:
+          error instanceof Error
+            ? error.message
+            : "The subtitle export options are invalid.",
+      });
+      return;
+    }
+
+    const workingDirectory = await mkdtemp(
+      path.join(tmpdir(), "prompter-subtitle-export-"),
+    );
+    const inputPath = path.join(workingDirectory, "take.recording");
+    const subtitlePath = path.join(workingDirectory, "captions.ass");
+    const outputPath = path.join(workingDirectory, "take-subtitled.mp4");
+
+    try {
+      await Promise.all([
+        writeFile(inputPath, parsedExport.recording),
+        writeFile(
+          subtitlePath,
+          buildAssSubtitles(
+            parsedExport.request.words,
+            parsedExport.request.fontFamily,
+          ),
+          "utf8",
+        ),
+      ]);
+      await execFileAsync(
+        ffmpegPath,
+        [
+          "-hide_banner",
+          "-loglevel",
+          "error",
+          "-y",
+          "-i",
+          inputPath,
+          "-map",
+          "0:v:0",
+          "-map",
+          "0:a:0",
+          "-vf",
+          assVideoFilter(),
+          "-c:v",
+          "libx264",
+          "-preset",
+          "veryfast",
+          "-crf",
+          "20",
+          "-pix_fmt",
+          "yuv420p",
+          "-c:a",
+          "aac",
+          "-b:a",
+          "192k",
+          "-movflags",
+          "+faststart",
+          outputPath,
+        ],
+        {
+          cwd: workingDirectory,
+          maxBuffer: 16 * 1024 * 1024,
+          windowsHide: true,
+        },
+      );
+
+      response.type("video/mp4");
+      response.setHeader("Cache-Control", "no-store");
+      response.sendFile(outputPath, (sendError) => {
+        void rm(workingDirectory, { recursive: true, force: true });
+        if (sendError && !response.headersSent) {
+          response.status(500).json({
+            error: "The subtitled MP4 could not be returned.",
+          });
+        }
+      });
+    } catch (error) {
+      await rm(workingDirectory, { recursive: true, force: true });
+      const message =
+        error instanceof Error ? error.message : "Unknown subtitle export error";
+      console.error("Subtitle export failed:", message);
+      response.status(500).json({
+        error: "Subtitle export failed. Your clean recording is still safe.",
       });
     }
   },

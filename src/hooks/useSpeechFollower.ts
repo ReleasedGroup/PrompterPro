@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { alignTranscript, wordsFromText } from "../lib/alignment";
+import { alignTranscript, tokenizeScript } from "../lib/alignment";
 import { appBrand } from "../lib/appBrand";
 import {
   stabilizeAdvance,
   type PendingAdvance,
 } from "../lib/following";
+import {
+  appendTimedScriptWords,
+  type TimedWord,
+} from "../lib/videoExport";
 
 export type FollowStatus =
   | "idle"
@@ -49,15 +53,22 @@ export function useSpeechFollower(
   enabled: boolean,
   mediaStream: MediaStream | null,
 ) {
-  const scriptWords = useMemo(() => wordsFromText(script), [script]);
+  const scriptTokens = useMemo(() => tokenizeScript(script), [script]);
+  const scriptWords = useMemo(
+    () => scriptTokens.map((token) => token.normalized),
+    [scriptTokens],
+  );
   const [currentIndex, setCurrentIndex] = useState(0);
   const [status, setStatus] = useState<FollowStatus>("idle");
   const [lastHeard, setLastHeard] = useState("");
   const [confidence, setConfidence] = useState(0);
   const [errorMessage, setErrorMessage] = useState("");
+  const [timedWords, setTimedWords] = useState<TimedWord[]>([]);
   const cursorRef = useRef(0);
   const missesRef = useRef(0);
   const pendingAdvanceRef = useRef<PendingAdvance | null>(null);
+  const timedWordsRef = useRef<TimedWord[]>([]);
+  const recognitionStartedAtRef = useRef(0);
 
   const setCursor = useCallback(
     (next: number) => {
@@ -83,6 +94,8 @@ export function useSpeechFollower(
     setLastHeard("");
     setConfidence(0);
     setErrorMessage("");
+    timedWordsRef.current = [];
+    setTimedWords([]);
     missesRef.current = 0;
     pendingAdvanceRef.current = null;
     setStatus("idle");
@@ -128,6 +141,7 @@ export function useSpeechFollower(
     let socket: WebSocket | null = null;
     let engineReady = false;
     let failureReported = false;
+    recognitionStartedAtRef.current = performance.now();
 
     const handleTranscript = (text: string, final: boolean) => {
       const heard = text.trim();
@@ -146,7 +160,20 @@ export function useSpeechFollower(
       if (result.matched) {
         missesRef.current = 0;
         if (stable.confirmed) {
-          setCursor(Math.max(cursorRef.current, stable.nextIndex));
+          const previousIndex = cursorRef.current;
+          const nextIndex = Math.max(previousIndex, stable.nextIndex);
+          if (nextIndex > previousIndex) {
+            const nextTimedWords = appendTimedScriptWords(
+              timedWordsRef.current,
+              scriptTokens,
+              previousIndex,
+              nextIndex,
+              performance.now() - recognitionStartedAtRef.current,
+            );
+            timedWordsRef.current = nextTimedWords;
+            setTimedWords(nextTimedWords);
+          }
+          setCursor(nextIndex);
           setStatus("following");
         } else {
           setStatus("listening");
@@ -268,7 +295,9 @@ export function useSpeechFollower(
       source?.disconnect();
       void audioContext?.close();
     };
-  }, [enabled, mediaStream, scriptWords, setCursor]);
+  }, [enabled, mediaStream, scriptTokens, scriptWords, setCursor]);
+
+  const getTimedWords = useCallback(() => timedWordsRef.current, []);
 
   return {
     currentIndex,
@@ -276,7 +305,9 @@ export function useSpeechFollower(
     lastHeard,
     confidence,
     errorMessage,
+    timedWords,
     totalWords: scriptWords.length,
+    getTimedWords,
     move,
     reset,
   };

@@ -15,6 +15,7 @@ import {
   Plus,
   RefreshCw,
   SlidersHorizontal,
+  Sparkles,
   Square,
   Video,
 } from "lucide-react";
@@ -42,6 +43,15 @@ import {
   loadStudioPreferences,
   updateStudioPreferences,
 } from "../lib/studioPreferences";
+import {
+  VIDEO_EXPORT_FONTS,
+  VIDEO_EXPORT_MIME_TYPE,
+  activeCaptionPage,
+  makeCaptionExportBody,
+  type TimedWord,
+  type VideoExportFont,
+  type VideoExportMode,
+} from "../lib/videoExport";
 import type { PrompterScript } from "../types";
 import { TeleprompterOverlay } from "./TeleprompterOverlay";
 
@@ -98,6 +108,40 @@ async function makeMp4(recording: Blob): Promise<Blob> {
   return new Blob([converted], { type: "video/mp4" });
 }
 
+async function makeSubtitledMp4(
+  recording: Blob,
+  words: TimedWord[],
+  fontFamily: VideoExportFont,
+): Promise<Blob> {
+  const response = await fetch("/api/recordings/subtitles", {
+    method: "POST",
+    headers: { "Content-Type": VIDEO_EXPORT_MIME_TYPE },
+    body: makeCaptionExportBody(recording, { fontFamily, words }),
+  });
+
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as {
+      error?: string;
+    } | null;
+    throw new Error(body?.error || "The subtitled MP4 could not be exported.");
+  }
+
+  const exported = await response.blob();
+  if (exported.size === 0) {
+    throw new Error("The subtitle exporter returned an empty file.");
+  }
+  return new Blob([exported], { type: "video/mp4" });
+}
+
+function downloadBlob(blob: Blob, fileName: string): void {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+}
+
 export function Studio({
   script,
   onBack,
@@ -116,6 +160,14 @@ export function Studio({
   const [captionMode, setCaptionMode] = useState<CaptionMode>(
     initialStudioPreferences.captionMode,
   );
+  const [exportMode, setExportMode] = useState<VideoExportMode>(
+    initialStudioPreferences.exportMode,
+  );
+  const [exportFont, setExportFont] = useState<VideoExportFont>(
+    initialStudioPreferences.exportFont,
+  );
+  const [exporting, setExporting] = useState(false);
+  const [reviewTimeMs, setReviewTimeMs] = useState(0);
   const [recordingUrl, setRecordingUrl] = useState("");
   const [recordingType, setRecordingType] = useState("");
   const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
@@ -138,6 +190,7 @@ export function Studio({
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const recordingUrlRef = useRef("");
+  const recordingBlobRef = useRef<Blob | null>(null);
   const explicitDeviceSelectionRef = useRef(false);
   const componentActiveRef = useRef(true);
   const shouldRestoreDevicesRef = useRef(
@@ -151,6 +204,7 @@ export function Studio({
   );
   const resetFollower = follower.reset;
   const movePrompt = follower.move;
+  const getTimedWords = follower.getTimedWords;
 
   useEffect(() => {
     if (!devicesOpen) return;
@@ -320,8 +374,14 @@ export function Studio({
   }, [enableDevices, initialStudioPreferences]);
 
   useEffect(() => {
-    updateStudioPreferences({ fontSize, promptPosition, captionMode });
-  }, [captionMode, fontSize, promptPosition]);
+    updateStudioPreferences({
+      fontSize,
+      promptPosition,
+      captionMode,
+      exportMode,
+      exportFont,
+    });
+  }, [captionMode, exportFont, exportMode, fontSize, promptPosition]);
 
   const changeDevice = useCallback(
     async (kind: "camera" | "microphone", deviceId: string) => {
@@ -417,7 +477,9 @@ export function Studio({
         URL.revokeObjectURL(recordingUrlRef.current);
       }
       recordingUrlRef.current = "";
+      recordingBlobRef.current = null;
       setRecordingUrl("");
+      setReviewTimeMs(0);
 
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) chunksRef.current.push(event.data);
@@ -436,6 +498,7 @@ export function Studio({
           .then((mp4Recording) => {
             const url = URL.createObjectURL(mp4Recording);
             recordingUrlRef.current = url;
+            recordingBlobRef.current = mp4Recording;
             setRecordingType("video/mp4");
             setRecordingUrl(url);
             setStudioState("review");
@@ -443,6 +506,7 @@ export function Studio({
           .catch((conversionError) => {
             const url = URL.createObjectURL(rawRecording);
             recordingUrlRef.current = url;
+            recordingBlobRef.current = rawRecording;
             setRecordingType(type);
             setRecordingUrl(url);
             setError(
@@ -488,14 +552,45 @@ export function Studio({
       URL.revokeObjectURL(recordingUrlRef.current);
     }
     recordingUrlRef.current = "";
+    recordingBlobRef.current = null;
     setRecordingUrl("");
     setRecordingType("");
     setError("");
     setElapsed(0);
+    setReviewTimeMs(0);
+    setExporting(false);
     resetFollower();
     setStudioState(streamRef.current ? "ready" : "setup");
     window.setTimeout(attachPreview, 0);
   }, [attachPreview, resetFollower]);
+
+  const exportSubtitledTake = useCallback(async () => {
+    const recording = recordingBlobRef.current;
+    const words = getTimedWords();
+    if (!recording || words.length === 0 || exporting) return;
+
+    setError("");
+    setExporting(true);
+    try {
+      const subtitled = await makeSubtitledMp4(recording, words, exportFont);
+      const timestamp = new Date()
+        .toISOString()
+        .slice(0, 19)
+        .replaceAll(":", "-");
+      downloadBlob(
+        subtitled,
+        `${safeFileName(script.title)}-${timestamp}-subtitled.mp4`,
+      );
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? `${caught.message} Your clean recording is still available.`
+          : "Subtitle export failed. Your clean recording is still available.",
+      );
+    } finally {
+      setExporting(false);
+    }
+  }, [exportFont, exporting, getTimedWords, script.title]);
 
   const handleBack = useCallback(() => {
     onBack();
@@ -621,7 +716,9 @@ export function Studio({
   }, []);
 
   const statusLabel =
-    follower.status === "following"
+    studioState === "review"
+      ? `${follower.timedWords.length} timed words ready`
+      : follower.status === "following"
       ? "Following your voice"
       : follower.status === "off-script"
         ? "Off script · prompt paused"
@@ -633,6 +730,14 @@ export function Studio({
 
   const mp4Ready = recordingType.includes("mp4");
   const downloadExtension = mp4Ready ? "mp4" : "webm";
+  const cleanDownloadName = `${safeFileName(script.title)}-${new Date()
+    .toISOString()
+    .slice(0, 19)
+    .replaceAll(":", "-")}.${downloadExtension}`;
+  const captionPreview =
+    exportMode === "subtitles"
+      ? activeCaptionPage(follower.timedWords, reviewTimeMs)
+      : null;
   const promptPositionLabel =
     promptPosition[0].toUpperCase() + promptPosition.slice(1);
   const captionModeLabel =
@@ -813,6 +918,12 @@ export function Studio({
             src={recordingUrl}
             controls
             playsInline
+            onTimeUpdate={(event) =>
+              setReviewTimeMs(event.currentTarget.currentTime * 1_000)
+            }
+            onSeeked={(event) =>
+              setReviewTimeMs(event.currentTarget.currentTime * 1_000)
+            }
           />
         ) : (
           <video
@@ -822,6 +933,25 @@ export function Studio({
             playsInline
             autoPlay
           />
+        )}
+
+        {studioState === "review" && captionPreview && (
+          <div
+            className="subtitle-preview"
+            style={{ fontFamily: exportFont }}
+            aria-hidden="true"
+          >
+            {captionPreview.words.map((word, index) => (
+              <span
+                className={
+                  index === captionPreview.activeIndex ? "active" : undefined
+                }
+                key={`${word.startMs}-${index}`}
+              >
+                {word.text}
+              </span>
+            ))}
+          </div>
         )}
 
         {(studioState === "setup" || studioState === "error") && (
@@ -883,6 +1013,52 @@ export function Studio({
             <div className="review-label">
               {mp4Ready ? "MP4 ready" : "Raw take ready"}
             </div>
+            <section className="export-settings" aria-label="Video export">
+              <header>
+                <Sparkles size={15} />
+                <div>
+                  <strong>Export style</strong>
+                  <span>Choose what gets burned into the video</span>
+                </div>
+              </header>
+              <div className="export-mode" role="group" aria-label="Export style">
+                <button
+                  className={exportMode === "clean" ? "selected" : ""}
+                  onClick={() => setExportMode("clean")}
+                >
+                  Clean
+                </button>
+                <button
+                  className={exportMode === "subtitles" ? "selected" : ""}
+                  onClick={() => setExportMode("subtitles")}
+                  disabled={follower.timedWords.length === 0}
+                >
+                  Highlight subtitles
+                </button>
+              </div>
+              <label>
+                <span>Subtitle font</span>
+                <select
+                  value={exportFont}
+                  disabled={exportMode === "clean"}
+                  style={{ fontFamily: exportFont }}
+                  onChange={(event) =>
+                    setExportFont(event.target.value as VideoExportFont)
+                  }
+                >
+                  {VIDEO_EXPORT_FONTS.map((font) => (
+                    <option value={font.family} key={font.family}>
+                      {font.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <small>
+                {follower.timedWords.length > 0
+                  ? "A single lower-third line follows and highlights every spoken word."
+                  : "Voice follow needs to hear the script before subtitles can be added."}
+              </small>
+            </section>
             {error && <div className="export-error">{error}</div>}
           </>
         )}
@@ -920,17 +1096,29 @@ export function Studio({
                 <RefreshCw size={17} />
                 New take
               </button>
-              <a
-                className="record-button download-button"
-                href={recordingUrl}
-                download={`${safeFileName(script.title)}-${new Date()
-                  .toISOString()
-                  .slice(0, 19)
-                  .replaceAll(":", "-")}.${downloadExtension}`}
-              >
-                <Download size={19} />
-                {mp4Ready ? "Save MP4" : "Download raw backup"}
-              </a>
+              {exportMode === "subtitles" ? (
+                <button
+                  className="record-button download-button"
+                  onClick={() => void exportSubtitledTake()}
+                  disabled={exporting || follower.timedWords.length === 0}
+                >
+                  {exporting ? (
+                    <span className="spinner" />
+                  ) : (
+                    <Download size={19} />
+                  )}
+                  {exporting ? "Rendering…" : "Export subtitled MP4"}
+                </button>
+              ) : (
+                <a
+                  className="record-button download-button"
+                  href={recordingUrl}
+                  download={cleanDownloadName}
+                >
+                  <Download size={19} />
+                  {mp4Ready ? "Save clean MP4" : "Download raw backup"}
+                </a>
+              )}
             </>
           ) : isRecording ? (
             <button className="record-button recording" onClick={stopRecording}>

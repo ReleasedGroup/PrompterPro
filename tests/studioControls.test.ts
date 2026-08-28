@@ -83,6 +83,8 @@ describe("Studio preferences", () => {
       fontSize: 54,
       promptPosition: "upper",
       captionMode: "line",
+      exportMode: "clean",
+      exportFont: "Arial Black",
     });
   });
 
@@ -140,6 +142,22 @@ describe("Studio preferences", () => {
       fontSize: 58,
       promptPosition: "lower",
       captionMode: "scroll",
+      exportMode: "clean",
+      exportFont: "Arial Black",
+    });
+  });
+
+  it("restores subtitle export style and font choices", () => {
+    const storage = preferenceStorage({
+      "prompter.studio.v1": JSON.stringify({
+        exportMode: "subtitles",
+        exportFont: "Georgia",
+      }),
+    });
+
+    expect(loadStudioPreferences(storage)).toMatchObject({
+      exportMode: "subtitles",
+      exportFont: "Georgia",
     });
   });
 });
