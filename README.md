@@ -3,7 +3,9 @@
 PrompterPro is a Windows-first, installable teleprompter MVP. It records raw
 camera and microphone media while an on-screen script follows the speaker.
 If the speaker leaves the script, the prompt pauses; when matching speech is
-heard again, it resumes. The prompt overlay is never burned into the recording.
+heard again, it resumes. The prompt overlay is never burned into the recording, but subtitles can be.
+
+[View on Microsoft Store](https://apps.microsoft.com/detail/9N98RJ29JC75)
 
 ## MVP features
 
