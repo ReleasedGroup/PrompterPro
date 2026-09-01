@@ -30,7 +30,7 @@ export interface VideoRenderRequest {
 
 const MIN_WORD_DURATION_MS = 90;
 const TYPICAL_WORD_DURATION_MS = 240;
-const MODEL_RECOGNITION_DELAY_MS = 1_500;
+const MODEL_RECOGNITION_DELAY_MS = 1_000;
 export const FINAL_CAPTION_HOLD_MS = 1_500;
 const MAX_LINE_WORDS = 8;
 const MAX_LINE_CHARACTERS = 48;

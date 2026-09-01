@@ -37,11 +37,11 @@ describe("video subtitle export", () => {
     expect(completed[3].endMs).toBeGreaterThan(completed[3].startMs);
   });
 
-  it("compensates for the streaming model's transcript delay", () => {
+  it("compensates for the streaming model's one-second transcript delay", () => {
     const tokens = tokenizeScript("Make");
     const timed = appendTimedScriptWords([], tokens, 0, 1, 2_500);
 
-    expect(timed).toEqual([{ text: "Make", startMs: 760, endMs: 1_000 }]);
+    expect(timed).toEqual([{ text: "Make", startMs: 1_260, endMs: 1_500 }]);
   });
 
   it("groups a sentence into one lower-third line and finds its active word", () => {
