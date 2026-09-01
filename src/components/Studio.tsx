@@ -46,6 +46,7 @@ import {
 import {
   VIDEO_EXPORT_FONTS,
   VIDEO_EXPORT_MIME_TYPE,
+  FINAL_CAPTION_HOLD_MS,
   activeCaptionPage,
   makeCaptionExportBody,
   type TimedWord,
@@ -108,27 +109,36 @@ async function makeMp4(recording: Blob): Promise<Blob> {
   return new Blob([converted], { type: "video/mp4" });
 }
 
-async function makeSubtitledMp4(
+async function renderMp4(
   recording: Blob,
   words: TimedWord[],
   fontFamily: VideoExportFont,
+  mode: VideoExportMode,
+  fadeToBlack: boolean,
+  videoDurationMs: number,
 ): Promise<Blob> {
-  const response = await fetch("/api/recordings/subtitles", {
+  const response = await fetch("/api/recordings/render", {
     method: "POST",
     headers: { "Content-Type": VIDEO_EXPORT_MIME_TYPE },
-    body: makeCaptionExportBody(recording, { fontFamily, words }),
+    body: makeCaptionExportBody(recording, {
+      mode,
+      fontFamily,
+      words,
+      fadeToBlack,
+      videoDurationMs,
+    }),
   });
 
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as {
       error?: string;
     } | null;
-    throw new Error(body?.error || "The subtitled MP4 could not be exported.");
+    throw new Error(body?.error || "The rendered MP4 could not be exported.");
   }
 
   const exported = await response.blob();
   if (exported.size === 0) {
-    throw new Error("The subtitle exporter returned an empty file.");
+    throw new Error("The video renderer returned an empty file.");
   }
   return new Blob([exported], { type: "video/mp4" });
 }
@@ -166,8 +176,12 @@ export function Studio({
   const [exportFont, setExportFont] = useState<VideoExportFont>(
     initialStudioPreferences.exportFont,
   );
+  const [exportFadeToBlack, setExportFadeToBlack] = useState(
+    initialStudioPreferences.exportFadeToBlack,
+  );
   const [exporting, setExporting] = useState(false);
   const [reviewTimeMs, setReviewTimeMs] = useState(0);
+  const [recordingDurationMs, setRecordingDurationMs] = useState(0);
   const [recordingUrl, setRecordingUrl] = useState("");
   const [recordingType, setRecordingType] = useState("");
   const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
@@ -380,8 +394,16 @@ export function Studio({
       captionMode,
       exportMode,
       exportFont,
+      exportFadeToBlack,
     });
-  }, [captionMode, exportFont, exportMode, fontSize, promptPosition]);
+  }, [
+    captionMode,
+    exportFadeToBlack,
+    exportFont,
+    exportMode,
+    fontSize,
+    promptPosition,
+  ]);
 
   const changeDevice = useCallback(
     async (kind: "camera" | "microphone", deviceId: string) => {
@@ -480,6 +502,7 @@ export function Studio({
       recordingBlobRef.current = null;
       setRecordingUrl("");
       setReviewTimeMs(0);
+      setRecordingDurationMs(0);
 
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) chunksRef.current.push(event.data);
@@ -558,39 +581,70 @@ export function Studio({
     setError("");
     setElapsed(0);
     setReviewTimeMs(0);
+    setRecordingDurationMs(0);
     setExporting(false);
     resetFollower();
     setStudioState(streamRef.current ? "ready" : "setup");
     window.setTimeout(attachPreview, 0);
   }, [attachPreview, resetFollower]);
 
-  const exportSubtitledTake = useCallback(async () => {
+  const exportRenderedTake = useCallback(async () => {
     const recording = recordingBlobRef.current;
-    const words = getTimedWords();
-    if (!recording || words.length === 0 || exporting) return;
+    const timedWords = getTimedWords();
+    const words = exportMode === "subtitles" ? timedWords : [];
+    if (
+      !recording ||
+      (exportMode === "subtitles" && words.length === 0) ||
+      exporting
+    ) return;
+    const videoDurationMs =
+      recordingDurationMs > 0
+        ? recordingDurationMs
+        : Math.max(
+            elapsed * 1_000,
+            (timedWords.at(-1)?.endMs ?? 0) + FINAL_CAPTION_HOLD_MS,
+          );
 
     setError("");
     setExporting(true);
     try {
-      const subtitled = await makeSubtitledMp4(recording, words, exportFont);
+      const rendered = await renderMp4(
+        recording,
+        words,
+        exportFont,
+        exportMode,
+        exportFadeToBlack,
+        videoDurationMs,
+      );
       const timestamp = new Date()
         .toISOString()
         .slice(0, 19)
         .replaceAll(":", "-");
       downloadBlob(
-        subtitled,
-        `${safeFileName(script.title)}-${timestamp}-subtitled.mp4`,
+        rendered,
+        `${safeFileName(script.title)}-${timestamp}-${
+          exportMode === "subtitles" ? "subtitled" : "faded"
+        }.mp4`,
       );
     } catch (caught) {
       setError(
         caught instanceof Error
           ? `${caught.message} Your clean recording is still available.`
-          : "Subtitle export failed. Your clean recording is still available.",
+          : "Video rendering failed. Your clean recording is still available.",
       );
     } finally {
       setExporting(false);
     }
-  }, [exportFont, exporting, getTimedWords, script.title]);
+  }, [
+    elapsed,
+    exportFadeToBlack,
+    exportFont,
+    exportMode,
+    exporting,
+    getTimedWords,
+    recordingDurationMs,
+    script.title,
+  ]);
 
   const handleBack = useCallback(() => {
     onBack();
@@ -924,6 +978,12 @@ export function Studio({
             onSeeked={(event) =>
               setReviewTimeMs(event.currentTarget.currentTime * 1_000)
             }
+            onLoadedMetadata={(event) => {
+              const durationMs = event.currentTarget.duration * 1_000;
+              if (Number.isFinite(durationMs) && durationMs > 0) {
+                setRecordingDurationMs(Math.round(durationMs));
+              }
+            }}
           />
         ) : (
           <video
@@ -1053,6 +1113,16 @@ export function Studio({
                   ))}
                 </select>
               </label>
+              <label className="export-toggle">
+                <input
+                  type="checkbox"
+                  checked={exportFadeToBlack}
+                  onChange={(event) =>
+                    setExportFadeToBlack(event.currentTarget.checked)
+                  }
+                />
+                <span>Fade to black for the final second</span>
+              </label>
               <small>
                 {follower.timedWords.length > 0
                   ? "A single lower-third line follows and highlights every spoken word."
@@ -1096,18 +1166,26 @@ export function Studio({
                 <RefreshCw size={17} />
                 New take
               </button>
-              {exportMode === "subtitles" ? (
+              {exportMode === "subtitles" || exportFadeToBlack ? (
                 <button
                   className="record-button download-button"
-                  onClick={() => void exportSubtitledTake()}
-                  disabled={exporting || follower.timedWords.length === 0}
+                  onClick={() => void exportRenderedTake()}
+                  disabled={
+                    exporting ||
+                    (exportMode === "subtitles" &&
+                      follower.timedWords.length === 0)
+                  }
                 >
                   {exporting ? (
                     <span className="spinner" />
                   ) : (
                     <Download size={19} />
                   )}
-                  {exporting ? "Rendering…" : "Export subtitled MP4"}
+                  {exporting
+                    ? "Rendering…"
+                    : exportMode === "subtitles"
+                      ? "Export subtitled MP4"
+                      : "Export faded MP4"}
                 </button>
               ) : (
                 <a

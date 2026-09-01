@@ -1,9 +1,10 @@
 import {
   VIDEO_EXPORT_FONTS,
+  FINAL_CAPTION_HOLD_MS,
   captionPages,
-  type CaptionExportRequest,
   type TimedWord,
   type VideoExportFont,
+  type VideoRenderRequest,
 } from "../src/lib/videoExport.js";
 
 const MAX_METADATA_BYTES = 512 * 1024;
@@ -12,8 +13,10 @@ const MAX_VIDEO_DURATION_MS = 4 * 60 * 60 * 1_000;
 
 export interface ParsedCaptionExport {
   recording: Buffer;
-  request: CaptionExportRequest;
+  request: VideoRenderRequest;
 }
+
+const FADE_TO_BLACK_DURATION_MS = 1_000;
 
 function isExportFont(value: unknown): value is VideoExportFont {
   return VIDEO_EXPORT_FONTS.some((font) => font.family === value);
@@ -67,16 +70,32 @@ export function parseCaptionExportBody(body: Buffer): ParsedCaptionExport {
   if (typeof metadata !== "object" || metadata === null) {
     throw new Error("The caption export options are invalid.");
   }
-  const candidate = metadata as Partial<CaptionExportRequest>;
+  const candidate = metadata as Partial<VideoRenderRequest>;
+  if (candidate.mode !== "clean" && candidate.mode !== "subtitles") {
+    throw new Error("Choose a supported video export style.");
+  }
   if (!isExportFont(candidate.fontFamily)) {
     throw new Error("Choose a supported subtitle font.");
   }
   if (
     !Array.isArray(candidate.words) ||
-    candidate.words.length === 0 ||
     candidate.words.length > MAX_CAPTION_WORDS
   ) {
+    throw new Error("The spoken-word timings are invalid.");
+  }
+  if (candidate.mode === "subtitles" && candidate.words.length === 0) {
     throw new Error("No spoken-word timings were supplied.");
+  }
+  if (typeof candidate.fadeToBlack !== "boolean") {
+    throw new Error("The fade option is invalid.");
+  }
+  const videoDurationMs = Number(candidate.videoDurationMs);
+  if (
+    !Number.isFinite(videoDurationMs) ||
+    videoDurationMs <= 0 ||
+    videoDurationMs > MAX_VIDEO_DURATION_MS
+  ) {
+    throw new Error("The video duration is invalid.");
   }
 
   const words = candidate.words.map(parseWord);
@@ -92,8 +111,30 @@ export function parseCaptionExportBody(body: Buffer): ParsedCaptionExport {
 
   return {
     recording: body.subarray(metadataLength + 4),
-    request: { fontFamily: candidate.fontFamily, words: parsedWords },
+    request: {
+      mode: candidate.mode,
+      fontFamily: candidate.fontFamily,
+      words: parsedWords,
+      fadeToBlack: candidate.fadeToBlack,
+      videoDurationMs: Math.round(videoDurationMs),
+    },
   };
+}
+
+export function buildVideoFilter(request: VideoRenderRequest): string | null {
+  const filters = request.mode === "subtitles" ? ["ass=captions.ass"] : [];
+  if (request.fadeToBlack) {
+    const fadeStartMs = Math.max(
+      0,
+      request.videoDurationMs - FADE_TO_BLACK_DURATION_MS,
+    );
+    filters.push(
+      `fade=t=out:st=${(fadeStartMs / 1_000).toFixed(3)}:d=${(
+        FADE_TO_BLACK_DURATION_MS / 1_000
+      ).toFixed(3)}:color=black`,
+    );
+  }
+  return filters.length > 0 ? filters.join(",") : null;
 }
 
 function escapeAssText(text: string): string {
@@ -131,11 +172,19 @@ export function buildAssSubtitles(
   fontFamily: VideoExportFont,
 ): string {
   const events: string[] = [];
-  for (const page of captionPages(words)) {
+  const pages = captionPages(words);
+  for (let pageIndex = 0; pageIndex < pages.length; pageIndex += 1) {
+    const page = pages[pageIndex];
     for (let index = 0; index < page.length; index += 1) {
       const word = page[index];
       const nextWord = page[index + 1];
-      const endMs = Math.max(word.startMs + 80, nextWord?.startMs ?? word.endMs);
+      const nextPageStartMs = pages[pageIndex + 1]?.[0]?.startMs;
+      const endMs = Math.max(
+        word.startMs + 80,
+        nextWord?.startMs ??
+          nextPageStartMs ??
+          word.endMs + FINAL_CAPTION_HOLD_MS,
+      );
       events.push(
         [
           "Dialogue: 0",

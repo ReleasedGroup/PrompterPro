@@ -1310,6 +1310,18 @@ p {
   font-weight: 600;
 }
 
+.export-settings .export-toggle {
+  grid-template-columns: auto 1fr;
+  justify-content: start;
+  cursor: pointer;
+}
+
+.export-toggle input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+}
+
 .export-settings select {
   min-width: 0;
   height: 34px;

@@ -21,7 +21,8 @@ fixed scroll speed.
 8. Resume from nearby script text and prompt movement catches up.
 9. Stop and review the finished take.
 10. Save a clean video, or choose a font and export a subtitled MP4 whose
-    lower-third line highlights the word currently being spoken.
+    lower-third line highlights the word currently being spoken. Either export
+    can optionally fade to black over its final second.
 
 ## Information architecture
 
@@ -88,8 +89,9 @@ recording and lets Studio devote most of the screen to eye-line and readability.
 
 - A user can complete the full journey without a developer tool.
 - A saved MP4 contains synchronized H.264 video and AAC microphone audio.
-- Subtitle export shows one lower-third line and highlights the active spoken
-  word without adding the teleprompter overlay to the clean source.
+- Subtitle export compensates for local-model recognition delay, keeps the
+  final lower-third on screen briefly, and highlights the active spoken word
+  without adding the teleprompter overlay to the clean source.
 - Prompt movement responds to matching speech and stops for unmatched speech.
 - Recording duration continues to increase while prompt status is off-script.
 - Script CRUD persists after a refresh.
