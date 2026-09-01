@@ -85,6 +85,7 @@ describe("Studio preferences", () => {
       captionMode: "line",
       exportMode: "clean",
       exportFont: "Arial Black",
+      exportFadeToBlack: false,
     });
   });
 
@@ -144,6 +145,7 @@ describe("Studio preferences", () => {
       captionMode: "scroll",
       exportMode: "clean",
       exportFont: "Arial Black",
+      exportFadeToBlack: false,
     });
   });
 
@@ -152,12 +154,14 @@ describe("Studio preferences", () => {
       "prompter.studio.v1": JSON.stringify({
         exportMode: "subtitles",
         exportFont: "Georgia",
+        exportFadeToBlack: true,
       }),
     });
 
     expect(loadStudioPreferences(storage)).toMatchObject({
       exportMode: "subtitles",
       exportFont: "Georgia",
+      exportFadeToBlack: true,
     });
   });
 });

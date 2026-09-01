@@ -19,6 +19,7 @@ export interface StudioPreferences {
   captionMode: CaptionMode;
   exportMode: VideoExportMode;
   exportFont: VideoExportFont;
+  exportFadeToBlack: boolean;
 }
 
 interface PreferenceStorage {
@@ -40,6 +41,7 @@ export const DEFAULT_STUDIO_PREFERENCES: StudioPreferences = {
   captionMode: "word",
   exportMode: "clean",
   exportFont: "Arial Black",
+  exportFadeToBlack: false,
 };
 
 function parseObject(value: string | null): Record<string, unknown> {
@@ -112,6 +114,7 @@ export function loadStudioPreferences(
       captionMode: parseCaptionMode(saved.captionMode),
       exportMode: parseExportMode(saved.exportMode),
       exportFont: parseExportFont(saved.exportFont),
+      exportFadeToBlack: saved.exportFadeToBlack === true,
     };
   } catch {
     return { ...DEFAULT_STUDIO_PREFERENCES };

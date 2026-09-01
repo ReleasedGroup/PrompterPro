@@ -86,12 +86,15 @@ available, it records a WebM/Opus take and posts it only to the loopback API.
 The API converts it to H.264/AAC MP4 with the bundled FFmpeg executable, returns
 the file for review/save, and removes its temporary working directory.
 
-Speech-confirmed cursor advances are timestamped during recording. Review keeps
-the clean recording as the source of truth and can preview those words as a
-single lower-third line. A subtitle export sends the clean take, selected font,
-and validated word timings only to the loopback API. The API builds a temporary
-ASS track, re-encodes the video with libass so the active word is enlarged and
-accented, returns an H.264/AAC MP4, and removes all temporary inputs.
+Speech-confirmed cursor advances are timestamped during recording with a
+1.5-second correction for the local model's observed recognition delay. Review
+keeps the clean recording as the source of truth and can preview those words as
+a single lower-third line. A subtitle export sends the clean take, selected
+font, and validated word timings only to the loopback API. The API builds a
+temporary ASS track, re-encodes the video with libass so the active word is
+enlarged and accented, optionally fades the final second to black, returns an
+H.264/AAC MP4, and removes all temporary inputs. The final caption remains
+visible for 1.5 seconds after its last timed word.
 
 ## Alignment approach
 

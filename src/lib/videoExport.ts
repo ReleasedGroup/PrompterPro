@@ -20,14 +20,18 @@ export interface TimedWord {
   endMs: number;
 }
 
-export interface CaptionExportRequest {
+export interface VideoRenderRequest {
+  mode: VideoExportMode;
   fontFamily: VideoExportFont;
   words: TimedWord[];
+  fadeToBlack: boolean;
+  videoDurationMs: number;
 }
 
 const MIN_WORD_DURATION_MS = 90;
 const TYPICAL_WORD_DURATION_MS = 240;
-const RECOGNITION_LATENCY_MS = 120;
+const MODEL_RECOGNITION_DELAY_MS = 1_500;
+export const FINAL_CAPTION_HOLD_MS = 1_500;
 const MAX_LINE_WORDS = 8;
 const MAX_LINE_CHARACTERS = 48;
 
@@ -58,7 +62,7 @@ export function appendTimedScriptWords(
   const lastEndMs = existing.at(-1)?.endMs ?? 0;
   const observedEndMs = Math.max(
     lastEndMs + count * MIN_WORD_DURATION_MS,
-    Math.round(observedAtMs - RECOGNITION_LATENCY_MS),
+    Math.round(observedAtMs - MODEL_RECOGNITION_DELAY_MS),
   );
   const estimatedStartMs = Math.max(
     lastEndMs,
@@ -113,9 +117,14 @@ export function activeCaptionPage(
   words: TimedWord[],
   timeMs: number,
 ): { words: TimedWord[]; activeIndex: number } | null {
-  for (const page of captionPages(words)) {
+  const pages = captionPages(words);
+  for (let pageIndex = 0; pageIndex < pages.length; pageIndex += 1) {
+    const page = pages[pageIndex];
     const pageStart = page[0]?.startMs ?? 0;
-    const pageEnd = page.at(-1)?.endMs ?? 0;
+    const lastWordEnd = page.at(-1)?.endMs ?? 0;
+    const pageEnd =
+      pages[pageIndex + 1]?.[0]?.startMs ??
+      lastWordEnd + FINAL_CAPTION_HOLD_MS;
     if (timeMs < pageStart || timeMs >= pageEnd) continue;
 
     const activeIndex = page.findIndex(
@@ -123,14 +132,17 @@ export function activeCaptionPage(
         timeMs >= word.startMs &&
         timeMs < (page[index + 1]?.startMs ?? word.endMs),
     );
-    return { words: page, activeIndex: Math.max(0, activeIndex) };
+    return {
+      words: page,
+      activeIndex: activeIndex < 0 ? page.length - 1 : activeIndex,
+    };
   }
   return null;
 }
 
 export function makeCaptionExportBody(
   recording: Blob,
-  request: CaptionExportRequest,
+  request: VideoRenderRequest,
 ): Blob {
   const metadata = new TextEncoder().encode(JSON.stringify(request));
   const header = new Uint8Array(4);

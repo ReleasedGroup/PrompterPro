@@ -16,6 +16,7 @@ import {
 } from "./localSpeech.js";
 import {
   buildAssSubtitles,
+  buildVideoFilter,
   parseCaptionExportBody,
 } from "./subtitleExport.js";
 
@@ -43,13 +44,6 @@ function resolveFfmpegPath(): string | null {
   return (
     candidates.find((candidate) => candidate && existsSync(candidate)) ?? null
   );
-}
-
-function assVideoFilter(): string {
-  // The bundled Windows FFmpeg build uses fontconfig's system-font provider.
-  // Keeping the ASS path relative also avoids drive-letter escaping being
-  // misread by libass as another filter option.
-  return "ass=captions.ass";
 }
 
 const ffmpegPath = resolveFfmpegPath();
@@ -142,7 +136,7 @@ app.post(
 );
 
 app.post(
-  "/api/recordings/subtitles",
+  "/api/recordings/render",
   express.raw({
     type: "application/x-prompter-export",
     limit: "1gb",
@@ -150,7 +144,7 @@ app.post(
   async (request, response) => {
     if (!ffmpegPath) {
       response.status(503).json({
-        error: "Subtitle export is not available on this computer.",
+        error: "Video rendering is not available on this computer.",
       });
       return;
     }
@@ -177,20 +171,24 @@ app.post(
     );
     const inputPath = path.join(workingDirectory, "take.recording");
     const subtitlePath = path.join(workingDirectory, "captions.ass");
-    const outputPath = path.join(workingDirectory, "take-subtitled.mp4");
+    const outputPath = path.join(workingDirectory, "take-rendered.mp4");
 
     try {
-      await Promise.all([
-        writeFile(inputPath, parsedExport.recording),
-        writeFile(
-          subtitlePath,
-          buildAssSubtitles(
-            parsedExport.request.words,
-            parsedExport.request.fontFamily,
+      const writes = [writeFile(inputPath, parsedExport.recording)];
+      if (parsedExport.request.mode === "subtitles") {
+        writes.push(
+          writeFile(
+            subtitlePath,
+            buildAssSubtitles(
+              parsedExport.request.words,
+              parsedExport.request.fontFamily,
+            ),
+            "utf8",
           ),
-          "utf8",
-        ),
-      ]);
+        );
+      }
+      await Promise.all(writes);
+      const videoFilter = buildVideoFilter(parsedExport.request);
       await execFileAsync(
         ffmpegPath,
         [
@@ -204,8 +202,7 @@ app.post(
           "0:v:0",
           "-map",
           "0:a:0",
-          "-vf",
-          assVideoFilter(),
+          ...(videoFilter ? ["-vf", videoFilter] : []),
           "-c:v",
           "libx264",
           "-preset",
@@ -235,17 +232,17 @@ app.post(
         void rm(workingDirectory, { recursive: true, force: true });
         if (sendError && !response.headersSent) {
           response.status(500).json({
-            error: "The subtitled MP4 could not be returned.",
+            error: "The rendered MP4 could not be returned.",
           });
         }
       });
     } catch (error) {
       await rm(workingDirectory, { recursive: true, force: true });
       const message =
-        error instanceof Error ? error.message : "Unknown subtitle export error";
-      console.error("Subtitle export failed:", message);
+        error instanceof Error ? error.message : "Unknown video render error";
+      console.error("Video rendering failed:", message);
       response.status(500).json({
-        error: "Subtitle export failed. Your clean recording is still safe.",
+        error: "Video rendering failed. Your clean recording is still safe.",
       });
     }
   },
