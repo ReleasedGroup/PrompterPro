@@ -8,7 +8,7 @@
   "type": "module",
   "main": "desktop/main.mjs",
   "scripts": {
-    "dev": "concurrently -k -n API,WEB -c cyan,magenta \"tsx watch server/index.ts\" \"vite\"",
+    "dev": "concurrently -k -n API,WEB -c cyan,magenta \"node scripts/dev-api.mjs\" \"vite\"",
     "site:render": "tsx site/render-static.tsx",
     "site:dev": "npm run site:render && vite site",
     "site:build": "npm run site:render && tsc -p site/tsconfig.json --pretty false && vite build site",
@@ -19,13 +19,14 @@
     "package:windows": "npm run build:desktop && node scripts/package-windows.mjs",
     "speech:model": "node scripts/install-speech-model.mjs",
     "speech:smoke:arm64": "node scripts/smoke-arm64-sidecar.mjs",
-    "speech:smoke": "tsx scripts/smoke-speech.ts",
+    "speech:smoke": "node scripts/smoke-speech.mjs",
     "start": "tsx server/index.ts --production",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {
+    "@mediapipe/tasks-vision": "0.10.21",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "ffmpeg-static": "^5.2.0",

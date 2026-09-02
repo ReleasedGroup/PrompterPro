@@ -6,6 +6,9 @@ import {
 } from "./studioControls";
 import {
   VIDEO_EXPORT_FONTS,
+  DEFAULT_SUBTITLE_HIGHLIGHT_COLOR,
+  type SubtitleTreatment,
+  type VideoAspectRatio,
   type VideoExportFont,
   type VideoExportMode,
 } from "./videoExport";
@@ -18,7 +21,10 @@ export interface StudioPreferences {
   promptPosition: PromptPosition;
   captionMode: CaptionMode;
   exportMode: VideoExportMode;
+  exportAspectRatio: VideoAspectRatio;
   exportFont: VideoExportFont;
+  exportHighlightColor: string;
+  exportSubtitleTreatment: SubtitleTreatment;
   exportFadeToBlack: boolean;
 }
 
@@ -40,7 +46,10 @@ export const DEFAULT_STUDIO_PREFERENCES: StudioPreferences = {
   promptPosition: "middle",
   captionMode: "word",
   exportMode: "clean",
+  exportAspectRatio: "original",
   exportFont: "Arial Black",
+  exportHighlightColor: DEFAULT_SUBTITLE_HIGHLIGHT_COLOR,
+  exportSubtitleTreatment: "background",
   exportFadeToBlack: false,
 };
 
@@ -83,10 +92,24 @@ function parseExportMode(value: unknown): VideoExportMode {
   return value === "subtitles" ? "subtitles" : "clean";
 }
 
+function parseExportAspectRatio(value: unknown): VideoAspectRatio {
+  return value === "landscape" || value === "vertical" ? value : "original";
+}
+
 function parseExportFont(value: unknown): VideoExportFont {
   return VIDEO_EXPORT_FONTS.some((font) => font.family === value)
     ? (value as VideoExportFont)
     : DEFAULT_STUDIO_PREFERENCES.exportFont;
+}
+
+function parseHighlightColor(value: unknown): string {
+  return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value)
+    ? value.toUpperCase()
+    : DEFAULT_SUBTITLE_HIGHLIGHT_COLOR;
+}
+
+function parseSubtitleTreatment(value: unknown): SubtitleTreatment {
+  return value === "outline" ? "outline" : "background";
 }
 
 export function loadStudioPreferences(
@@ -113,7 +136,12 @@ export function loadStudioPreferences(
       promptPosition: parsePromptPosition(saved.promptPosition),
       captionMode: parseCaptionMode(saved.captionMode),
       exportMode: parseExportMode(saved.exportMode),
+      exportAspectRatio: parseExportAspectRatio(saved.exportAspectRatio),
       exportFont: parseExportFont(saved.exportFont),
+      exportHighlightColor: parseHighlightColor(saved.exportHighlightColor),
+      exportSubtitleTreatment: parseSubtitleTreatment(
+        saved.exportSubtitleTreatment,
+      ),
       exportFadeToBlack: saved.exportFadeToBlack === true,
     };
   } catch {

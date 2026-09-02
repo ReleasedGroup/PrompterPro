@@ -13,6 +13,9 @@ export const VIDEO_EXPORT_FONTS = [
 
 export type VideoExportFont = (typeof VIDEO_EXPORT_FONTS)[number]["family"];
 export type VideoExportMode = "clean" | "subtitles";
+export type VideoAspectRatio = "original" | "landscape" | "vertical";
+export type SubtitleTreatment = "background" | "outline";
+export const DEFAULT_SUBTITLE_HIGHLIGHT_COLOR = "#D4FF6A";
 
 export interface TimedWord {
   text: string;
@@ -22,9 +25,13 @@ export interface TimedWord {
 
 export interface VideoRenderRequest {
   mode: VideoExportMode;
+  aspectRatio: VideoAspectRatio;
+  highlightColor: string;
+  subtitleTreatment: SubtitleTreatment;
   fontFamily: VideoExportFont;
   words: TimedWord[];
   fadeToBlack: boolean;
+  preserveQuality: boolean;
   videoDurationMs: number;
 }
 
@@ -81,10 +88,16 @@ export function appendTimedScriptWords(
   return [...existing, ...additions];
 }
 
-export function captionPages(words: TimedWord[]): TimedWord[][] {
+export function captionPages(
+  words: TimedWord[],
+  aspectRatio: VideoAspectRatio = "original",
+): TimedWord[][] {
   const pages: TimedWord[][] = [];
   let page: TimedWord[] = [];
   let characters = 0;
+  const maxLineWords = aspectRatio === "vertical" ? 5 : MAX_LINE_WORDS;
+  const maxLineCharacters =
+    aspectRatio === "vertical" ? 28 : MAX_LINE_CHARACTERS;
 
   const finishPage = () => {
     if (page.length > 0) pages.push(page);
@@ -96,7 +109,7 @@ export function captionPages(words: TimedWord[]): TimedWord[][] {
     const nextCharacters = characters + (page.length > 0 ? 1 : 0) + word.text.length;
     if (
       page.length > 0 &&
-      (page.length >= MAX_LINE_WORDS || nextCharacters > MAX_LINE_CHARACTERS)
+      (page.length >= maxLineWords || nextCharacters > maxLineCharacters)
     ) {
       finishPage();
     }
@@ -104,7 +117,10 @@ export function captionPages(words: TimedWord[]): TimedWord[][] {
     page.push(word);
     characters += (page.length > 1 ? 1 : 0) + word.text.length;
 
-    if (page.length >= 4 && /[.!?]["'\u2019]?$/u.test(word.text)) {
+    if (
+      page.length >= (aspectRatio === "vertical" ? 3 : 4) &&
+      /[.!?]["'\u2019]?$/u.test(word.text)
+    ) {
       finishPage();
     }
   }
@@ -116,8 +132,9 @@ export function captionPages(words: TimedWord[]): TimedWord[][] {
 export function activeCaptionPage(
   words: TimedWord[],
   timeMs: number,
+  aspectRatio: VideoAspectRatio = "original",
 ): { words: TimedWord[]; activeIndex: number } | null {
-  const pages = captionPages(words);
+  const pages = captionPages(words, aspectRatio);
   for (let pageIndex = 0; pageIndex < pages.length; pageIndex += 1) {
     const page = pages[pageIndex];
     const pageStart = page[0]?.startMs ?? 0;
@@ -143,11 +160,20 @@ export function activeCaptionPage(
 export function makeCaptionExportBody(
   recording: Blob,
   request: VideoRenderRequest,
+  audioRecording?: Blob,
 ): Blob {
-  const metadata = new TextEncoder().encode(JSON.stringify(request));
+  const metadata = new TextEncoder().encode(
+    JSON.stringify({
+      ...request,
+      audioByteOffset: audioRecording ? recording.size : null,
+    }),
+  );
   const header = new Uint8Array(4);
   new DataView(header.buffer).setUint32(0, metadata.byteLength);
-  return new Blob([header, metadata, recording], {
-    type: VIDEO_EXPORT_MIME_TYPE,
-  });
+  return new Blob(
+    [header, metadata, recording, ...(audioRecording ? [audioRecording] : [])],
+    {
+      type: VIDEO_EXPORT_MIME_TYPE,
+    },
+  );
 }

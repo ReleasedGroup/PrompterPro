@@ -84,7 +84,10 @@ describe("Studio preferences", () => {
       promptPosition: "upper",
       captionMode: "line",
       exportMode: "clean",
+      exportAspectRatio: "original",
       exportFont: "Arial Black",
+      exportHighlightColor: "#D4FF6A",
+      exportSubtitleTreatment: "background",
       exportFadeToBlack: false,
     });
   });
@@ -144,7 +147,10 @@ describe("Studio preferences", () => {
       promptPosition: "lower",
       captionMode: "scroll",
       exportMode: "clean",
+      exportAspectRatio: "original",
       exportFont: "Arial Black",
+      exportHighlightColor: "#D4FF6A",
+      exportSubtitleTreatment: "background",
       exportFadeToBlack: false,
     });
   });
@@ -153,14 +159,20 @@ describe("Studio preferences", () => {
     const storage = preferenceStorage({
       "prompter.studio.v1": JSON.stringify({
         exportMode: "subtitles",
+        exportAspectRatio: "vertical",
         exportFont: "Georgia",
+        exportHighlightColor: "#ff3366",
+        exportSubtitleTreatment: "outline",
         exportFadeToBlack: true,
       }),
     });
 
     expect(loadStudioPreferences(storage)).toMatchObject({
       exportMode: "subtitles",
+      exportAspectRatio: "vertical",
       exportFont: "Georgia",
+      exportHighlightColor: "#FF3366",
+      exportSubtitleTreatment: "outline",
       exportFadeToBlack: true,
     });
   });

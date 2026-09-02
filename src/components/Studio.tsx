@@ -10,6 +10,7 @@ import {
   Download,
   Expand,
   FlipHorizontal2,
+  ImagePlus,
   Mic2,
   Minus,
   Plus,
@@ -17,6 +18,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   Square,
+  Trash2,
   Video,
 } from "lucide-react";
 import {
@@ -24,8 +26,13 @@ import {
   useEffect,
   useRef,
   useState,
+  type CSSProperties,
 } from "react";
 import { useSpeechFollower } from "../hooks/useSpeechFollower";
+import {
+  backgroundAssetKind,
+  replaceVideoBackground,
+} from "../lib/backgroundReplacement";
 import {
   maximumCameraResolution,
   maximizeVideoTrackResolution,
@@ -46,10 +53,13 @@ import {
 import {
   VIDEO_EXPORT_FONTS,
   VIDEO_EXPORT_MIME_TYPE,
+  DEFAULT_SUBTITLE_HIGHLIGHT_COLOR,
   FINAL_CAPTION_HOLD_MS,
   activeCaptionPage,
   makeCaptionExportBody,
+  type SubtitleTreatment,
   type TimedWord,
+  type VideoAspectRatio,
   type VideoExportFont,
   type VideoExportMode,
 } from "../lib/videoExport";
@@ -114,19 +124,32 @@ async function renderMp4(
   words: TimedWord[],
   fontFamily: VideoExportFont,
   mode: VideoExportMode,
+  aspectRatio: VideoAspectRatio,
+  highlightColor: string,
+  subtitleTreatment: SubtitleTreatment,
   fadeToBlack: boolean,
   videoDurationMs: number,
+  preserveQuality = false,
+  audioRecording?: Blob,
 ): Promise<Blob> {
   const response = await fetch("/api/recordings/render", {
     method: "POST",
     headers: { "Content-Type": VIDEO_EXPORT_MIME_TYPE },
-    body: makeCaptionExportBody(recording, {
-      mode,
-      fontFamily,
-      words,
-      fadeToBlack,
-      videoDurationMs,
-    }),
+    body: makeCaptionExportBody(
+      recording,
+      {
+        mode,
+        aspectRatio,
+        highlightColor,
+        subtitleTreatment,
+        fontFamily,
+        words,
+        fadeToBlack,
+        preserveQuality,
+        videoDurationMs,
+      },
+      audioRecording,
+    ),
   });
 
   if (!response.ok) {
@@ -173,15 +196,31 @@ export function Studio({
   const [exportMode, setExportMode] = useState<VideoExportMode>(
     initialStudioPreferences.exportMode,
   );
+  const [exportAspectRatio, setExportAspectRatio] = useState<VideoAspectRatio>(
+    initialStudioPreferences.exportAspectRatio,
+  );
   const [exportFont, setExportFont] = useState<VideoExportFont>(
     initialStudioPreferences.exportFont,
   );
+  const [exportHighlightColor, setExportHighlightColor] = useState(
+    initialStudioPreferences.exportHighlightColor ??
+      DEFAULT_SUBTITLE_HIGHLIGHT_COLOR,
+  );
+  const [exportSubtitleTreatment, setExportSubtitleTreatment] =
+    useState<SubtitleTreatment>(
+      initialStudioPreferences.exportSubtitleTreatment,
+    );
   const [exportFadeToBlack, setExportFadeToBlack] = useState(
     initialStudioPreferences.exportFadeToBlack,
   );
   const [exporting, setExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState("");
+  const [backgroundFile, setBackgroundFile] = useState<File | null>(null);
+  const [backgroundUrl, setBackgroundUrl] = useState("");
   const [reviewTimeMs, setReviewTimeMs] = useState(0);
   const [recordingDurationMs, setRecordingDurationMs] = useState(0);
+  const [recordingFrameRate, setRecordingFrameRate] = useState(30);
+  const [recordingBitrate, setRecordingBitrate] = useState<number | undefined>();
   const [recordingUrl, setRecordingUrl] = useState("");
   const [recordingType, setRecordingType] = useState("");
   const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
@@ -201,10 +240,12 @@ export function Studio({
   const previewRef = useRef<HTMLVideoElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const devicesMenuRef = useRef<HTMLDivElement | null>(null);
+  const backgroundInputRef = useRef<HTMLInputElement | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const recordingUrlRef = useRef("");
   const recordingBlobRef = useRef<Blob | null>(null);
+  const sourceRecordingBlobRef = useRef<Blob | null>(null);
   const explicitDeviceSelectionRef = useRef(false);
   const componentActiveRef = useRef(true);
   const shouldRestoreDevicesRef = useRef(
@@ -219,6 +260,16 @@ export function Studio({
   const resetFollower = follower.reset;
   const movePrompt = follower.move;
   const getTimedWords = follower.getTimedWords;
+
+  useEffect(() => {
+    if (!backgroundFile) {
+      setBackgroundUrl("");
+      return;
+    }
+    const url = URL.createObjectURL(backgroundFile);
+    setBackgroundUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [backgroundFile]);
 
   useEffect(() => {
     if (!devicesOpen) return;
@@ -393,14 +444,20 @@ export function Studio({
       promptPosition,
       captionMode,
       exportMode,
+      exportAspectRatio,
       exportFont,
+      exportHighlightColor,
+      exportSubtitleTreatment,
       exportFadeToBlack,
     });
   }, [
     captionMode,
     exportFadeToBlack,
     exportFont,
+    exportHighlightColor,
+    exportSubtitleTreatment,
     exportMode,
+    exportAspectRatio,
     fontSize,
     promptPosition,
   ]);
@@ -476,6 +533,8 @@ export function Studio({
       const videoBitsPerSecond = recordingVideoBitrate(
         videoTrack.getSettings(),
       );
+      setRecordingFrameRate(videoTrack.getSettings().frameRate || 30);
+      setRecordingBitrate(videoBitsPerSecond);
       const recorderOptions: MediaRecorderOptions = {
         ...(mimeType ? { mimeType } : {}),
         ...(videoBitsPerSecond ? { videoBitsPerSecond } : {}),
@@ -500,6 +559,7 @@ export function Studio({
       }
       recordingUrlRef.current = "";
       recordingBlobRef.current = null;
+      sourceRecordingBlobRef.current = null;
       setRecordingUrl("");
       setReviewTimeMs(0);
       setRecordingDurationMs(0);
@@ -515,6 +575,7 @@ export function Studio({
         const type =
           recorder.mimeType || chunksRef.current[0]?.type || "video/webm";
         const rawRecording = new Blob(chunksRef.current, { type });
+        sourceRecordingBlobRef.current = rawRecording;
         chunksRef.current = [];
 
         void makeMp4(rawRecording)
@@ -576,13 +637,17 @@ export function Studio({
     }
     recordingUrlRef.current = "";
     recordingBlobRef.current = null;
+    sourceRecordingBlobRef.current = null;
     setRecordingUrl("");
     setRecordingType("");
     setError("");
     setElapsed(0);
     setReviewTimeMs(0);
     setRecordingDurationMs(0);
+    setRecordingFrameRate(30);
+    setRecordingBitrate(undefined);
     setExporting(false);
+    setExportProgress("");
     resetFollower();
     setStudioState(streamRef.current ? "ready" : "setup");
     window.setTimeout(attachPreview, 0);
@@ -608,13 +673,43 @@ export function Studio({
     setError("");
     setExporting(true);
     try {
+      let sourceRecording = recording;
+      let audioRecording: Blob | undefined;
+      if (backgroundFile) {
+        sourceRecording = sourceRecordingBlobRef.current ?? recording;
+        audioRecording = sourceRecording;
+        sourceRecording = await replaceVideoBackground(
+          sourceRecording,
+          backgroundFile,
+          {
+            frameRate: recordingFrameRate,
+            videoBitsPerSecond: recordingBitrate,
+            onProgress: ({ phase, progress }) => {
+              const percent = Math.round(progress * 100);
+              setExportProgress(
+                phase === "loading"
+                  ? "Loading AI rotoscope…"
+                  : phase === "rotoscoping"
+                    ? `Rotoscoping presenter · ${percent}%`
+                    : "Encoding replacement scene…",
+              );
+            },
+          },
+        );
+      }
+      setExportProgress("Rendering MP4…");
       const rendered = await renderMp4(
-        recording,
+        sourceRecording,
         words,
         exportFont,
         exportMode,
+        exportAspectRatio,
+        exportHighlightColor,
+        exportSubtitleTreatment,
         exportFadeToBlack,
         videoDurationMs,
+        Boolean(backgroundFile),
+        audioRecording,
       );
       const timestamp = new Date()
         .toISOString()
@@ -623,8 +718,16 @@ export function Studio({
       downloadBlob(
         rendered,
         `${safeFileName(script.title)}-${timestamp}-${
-          exportMode === "subtitles" ? "subtitled" : "faded"
-        }.mp4`,
+          exportAspectRatio === "landscape"
+            ? "youtube"
+            : exportAspectRatio === "vertical"
+              ? "shorts"
+              : "original"
+        }-${backgroundFile
+          ? "new-background"
+          : exportMode === "subtitles"
+            ? "subtitled"
+            : "rendered"}.mp4`,
       );
     } catch (caught) {
       setError(
@@ -634,17 +737,34 @@ export function Studio({
       );
     } finally {
       setExporting(false);
+      setExportProgress("");
     }
   }, [
+    backgroundFile,
     elapsed,
     exportFadeToBlack,
     exportFont,
+    exportHighlightColor,
+    exportSubtitleTreatment,
     exportMode,
+    exportAspectRatio,
     exporting,
     getTimedWords,
     recordingDurationMs,
+    recordingBitrate,
+    recordingFrameRate,
     script.title,
   ]);
+
+  const chooseBackground = useCallback((file: File | null) => {
+    if (!file) return;
+    if (!backgroundAssetKind(file)) {
+      setError("Choose an image or video file for the replacement background.");
+      return;
+    }
+    setError("");
+    setBackgroundFile(file);
+  }, []);
 
   const handleBack = useCallback(() => {
     onBack();
@@ -790,7 +910,11 @@ export function Studio({
     .replaceAll(":", "-")}.${downloadExtension}`;
   const captionPreview =
     exportMode === "subtitles"
-      ? activeCaptionPage(follower.timedWords, reviewTimeMs)
+      ? activeCaptionPage(
+          follower.timedWords,
+          reviewTimeMs,
+          exportAspectRatio,
+        )
       : null;
   const promptPositionLabel =
     promptPosition[0].toUpperCase() + promptPosition.slice(1);
@@ -806,6 +930,14 @@ export function Studio({
       : promptPosition === "lower"
         ? AlignVerticalJustifyEnd
         : AlignVerticalJustifyCenter;
+  const backgroundKind = backgroundFile
+    ? backgroundAssetKind(backgroundFile)
+    : null;
+  const needsRenderedExport =
+    exportMode === "subtitles" ||
+    exportFadeToBlack ||
+    exportAspectRatio !== "original" ||
+    Boolean(backgroundFile);
 
   return (
     <main className="studio-layout">
@@ -997,8 +1129,13 @@ export function Studio({
 
         {studioState === "review" && captionPreview && (
           <div
-            className="subtitle-preview"
-            style={{ fontFamily: exportFont }}
+            className={`subtitle-preview ${exportSubtitleTreatment}`}
+            style={
+              {
+                fontFamily: exportFont,
+                "--subtitle-highlight": exportHighlightColor,
+              } as CSSProperties
+            }
             aria-hidden="true"
           >
             {captionPreview.words.map((word, index) => (
@@ -1024,6 +1161,15 @@ export function Studio({
               Connect your camera and microphone to see the prompt over your
               live preview.
             </p>
+            <div className="export-capability">
+              <Sparkles size={16} />
+              <div>
+                <strong>Scene replacement at export</strong>
+                <span>
+                  Rotoscope yourself over any still image or looping video.
+                </span>
+              </div>
+            </div>
             {error && <div className="device-error">{error}</div>}
             <button
               className="primary-button"
@@ -1096,6 +1242,90 @@ export function Studio({
                   Highlight subtitles
                 </button>
               </div>
+              <div className="export-format-section">
+                <span>Video format</span>
+                <div
+                  className="export-format"
+                  role="group"
+                  aria-label="Video format"
+                >
+                  <button
+                    className={exportAspectRatio === "original" ? "selected" : ""}
+                    onClick={() => setExportAspectRatio("original")}
+                  >
+                    <strong>Original</strong>
+                    <small>Camera frame</small>
+                  </button>
+                  <button
+                    className={exportAspectRatio === "landscape" ? "selected" : ""}
+                    onClick={() => setExportAspectRatio("landscape")}
+                  >
+                    <strong>YouTube</strong>
+                    <small>16:9 · 1080p</small>
+                  </button>
+                  <button
+                    className={exportAspectRatio === "vertical" ? "selected" : ""}
+                    onClick={() => setExportAspectRatio("vertical")}
+                  >
+                    <strong>Shorts</strong>
+                    <small>9:16 · 1080p</small>
+                  </button>
+                </div>
+              </div>
+              <div className="background-replacement">
+                <div className="background-replacement-heading">
+                  <span>
+                    <ImagePlus size={14} />
+                    Replace background
+                  </span>
+                  <em>AI rotoscope</em>
+                </div>
+                <input
+                  ref={backgroundInputRef}
+                  type="file"
+                  accept="image/*,video/*"
+                  onChange={(event) => {
+                    chooseBackground(event.currentTarget.files?.[0] ?? null);
+                    event.currentTarget.value = "";
+                  }}
+                />
+                {backgroundFile && backgroundUrl && backgroundKind ? (
+                  <div className="background-file">
+                    {backgroundKind === "image" ? (
+                      <img src={backgroundUrl} alt="Replacement background" />
+                    ) : (
+                      <video src={backgroundUrl} muted loop autoPlay playsInline />
+                    )}
+                    <div>
+                      <strong>{backgroundFile.name}</strong>
+                      <span>
+                        {backgroundKind === "image" ? "Still image" : "Looping video"}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setBackgroundFile(null)}
+                      aria-label="Remove replacement background"
+                      title="Remove replacement background"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="background-picker"
+                    onClick={() => backgroundInputRef.current?.click()}
+                  >
+                    <ImagePlus size={15} />
+                    Choose image or video
+                  </button>
+                )}
+                <small>
+                  Your presenter is cut out on-device. Native resolution, frame
+                  rate, and a high-quality bitrate are preserved.
+                </small>
+              </div>
               <label>
                 <span>Subtitle font</span>
                 <select
@@ -1113,6 +1343,52 @@ export function Studio({
                   ))}
                 </select>
               </label>
+              <label className="subtitle-colour-control">
+                <span>Highlight colour</span>
+                <span className="colour-picker-value">
+                  <input
+                    type="color"
+                    value={exportHighlightColor}
+                    disabled={exportMode === "clean"}
+                    aria-label="Highlighted word colour"
+                    onChange={(event) =>
+                      setExportHighlightColor(
+                        event.currentTarget.value.toUpperCase(),
+                      )
+                    }
+                  />
+                  <code>{exportHighlightColor}</code>
+                </span>
+              </label>
+              <div className="subtitle-treatment-section">
+                <span>Subtitle text</span>
+                <div
+                  className="subtitle-treatment"
+                  role="group"
+                  aria-label="Subtitle text treatment"
+                >
+                  <button
+                    className={
+                      exportSubtitleTreatment === "background"
+                        ? "selected"
+                        : ""
+                    }
+                    disabled={exportMode === "clean"}
+                    onClick={() => setExportSubtitleTreatment("background")}
+                  >
+                    Black background
+                  </button>
+                  <button
+                    className={
+                      exportSubtitleTreatment === "outline" ? "selected" : ""
+                    }
+                    disabled={exportMode === "clean"}
+                    onClick={() => setExportSubtitleTreatment("outline")}
+                  >
+                    Text outline
+                  </button>
+                </div>
+              </div>
               <label className="export-toggle">
                 <input
                   type="checkbox"
@@ -1128,6 +1404,12 @@ export function Studio({
                   ? "A single lower-third line follows and highlights every spoken word."
                   : "Voice follow needs to hear the script before subtitles can be added."}
               </small>
+              {exportProgress && (
+                <div className="export-progress" aria-live="polite">
+                  <span className="spinner" />
+                  {exportProgress}
+                </div>
+              )}
             </section>
             {error && <div className="export-error">{error}</div>}
           </>
@@ -1166,7 +1448,7 @@ export function Studio({
                 <RefreshCw size={17} />
                 New take
               </button>
-              {exportMode === "subtitles" || exportFadeToBlack ? (
+              {needsRenderedExport ? (
                 <button
                   className="record-button download-button"
                   onClick={() => void exportRenderedTake()}
@@ -1183,7 +1465,13 @@ export function Studio({
                   )}
                   {exporting
                     ? "Rendering…"
-                    : exportMode === "subtitles"
+                    : exportAspectRatio === "landscape"
+                      ? "Export YouTube MP4"
+                      : exportAspectRatio === "vertical"
+                        ? "Export Shorts MP4"
+                        : backgroundFile
+                      ? "Export new scene MP4"
+                      : exportMode === "subtitles"
                       ? "Export subtitled MP4"
                       : "Export faded MP4"}
                 </button>
