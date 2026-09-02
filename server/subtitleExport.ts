@@ -1,8 +1,11 @@
 import {
   VIDEO_EXPORT_FONTS,
+  DEFAULT_SUBTITLE_HIGHLIGHT_COLOR,
   FINAL_CAPTION_HOLD_MS,
   captionPages,
   type TimedWord,
+  type VideoAspectRatio,
+  type SubtitleTreatment,
   type VideoExportFont,
   type VideoRenderRequest,
 } from "../src/lib/videoExport.js";
@@ -13,6 +16,7 @@ const MAX_VIDEO_DURATION_MS = 4 * 60 * 60 * 1_000;
 
 export interface ParsedCaptionExport {
   recording: Buffer;
+  audioRecording: Buffer | null;
   request: VideoRenderRequest;
 }
 
@@ -20,6 +24,28 @@ const FADE_TO_BLACK_DURATION_MS = 1_000;
 
 function isExportFont(value: unknown): value is VideoExportFont {
   return VIDEO_EXPORT_FONTS.some((font) => font.family === value);
+}
+
+function parseAspectRatio(value: unknown): VideoAspectRatio {
+  if (typeof value === "undefined") return "original";
+  if (value === "original" || value === "landscape" || value === "vertical") {
+    return value;
+  }
+  throw new Error("Choose a supported video format.");
+}
+
+function parseHighlightColor(value: unknown): string {
+  if (typeof value === "undefined") return DEFAULT_SUBTITLE_HIGHLIGHT_COLOR;
+  if (typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value)) {
+    return value.toUpperCase();
+  }
+  throw new Error("Choose a valid subtitle highlight colour.");
+}
+
+function parseSubtitleTreatment(value: unknown): SubtitleTreatment {
+  if (typeof value === "undefined") return "background";
+  if (value === "background" || value === "outline") return value;
+  throw new Error("Choose a supported subtitle text treatment.");
 }
 
 function parseWord(value: unknown): TimedWord | null {
@@ -70,7 +96,9 @@ export function parseCaptionExportBody(body: Buffer): ParsedCaptionExport {
   if (typeof metadata !== "object" || metadata === null) {
     throw new Error("The caption export options are invalid.");
   }
-  const candidate = metadata as Partial<VideoRenderRequest>;
+  const candidate = metadata as Partial<VideoRenderRequest> & {
+    audioByteOffset?: unknown;
+  };
   if (candidate.mode !== "clean" && candidate.mode !== "subtitles") {
     throw new Error("Choose a supported video export style.");
   }
@@ -109,20 +137,58 @@ export function parseCaptionExportBody(body: Buffer): ParsedCaptionExport {
     }
   }
 
+  const payload = body.subarray(metadataLength + 4);
+  const audioByteOffset =
+    candidate.audioByteOffset === null ||
+    typeof candidate.audioByteOffset === "undefined"
+      ? null
+      : Number(candidate.audioByteOffset);
+  if (
+    audioByteOffset !== null &&
+    (!Number.isSafeInteger(audioByteOffset) ||
+      audioByteOffset <= 0 ||
+      audioByteOffset >= payload.length)
+  ) {
+    throw new Error("The separate audio track is invalid.");
+  }
+
   return {
-    recording: body.subarray(metadataLength + 4),
+    recording:
+      audioByteOffset === null
+        ? payload
+        : payload.subarray(0, audioByteOffset),
+    audioRecording:
+      audioByteOffset === null ? null : payload.subarray(audioByteOffset),
     request: {
       mode: candidate.mode,
+      aspectRatio: parseAspectRatio(candidate.aspectRatio),
+      highlightColor: parseHighlightColor(candidate.highlightColor),
+      subtitleTreatment: parseSubtitleTreatment(candidate.subtitleTreatment),
       fontFamily: candidate.fontFamily,
       words: parsedWords,
       fadeToBlack: candidate.fadeToBlack,
+      preserveQuality: candidate.preserveQuality === true,
       videoDurationMs: Math.round(videoDurationMs),
     },
   };
 }
 
 export function buildVideoFilter(request: VideoRenderRequest): string | null {
-  const filters = request.mode === "subtitles" ? ["ass=captions.ass"] : [];
+  const filters: string[] = [];
+  if (request.aspectRatio === "landscape") {
+    filters.push(
+      "scale=1920:1080:force_original_aspect_ratio=increase:flags=lanczos",
+      "crop=1920:1080",
+      "setsar=1",
+    );
+  } else if (request.aspectRatio === "vertical") {
+    filters.push(
+      "scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos",
+      "crop=1080:1920",
+      "setsar=1",
+    );
+  }
+  if (request.mode === "subtitles") filters.push("ass=captions.ass");
   if (request.fadeToBlack) {
     const fadeStartMs = Math.max(
       0,
@@ -157,12 +223,23 @@ function formatAssTime(milliseconds: number): string {
     .padStart(2, "0")}.${remainder.toString().padStart(2, "0")}`;
 }
 
-function highlightedLine(words: TimedWord[], activeIndex: number): string {
+export function hexToAssColor(hexColor: string): string {
+  const red = hexColor.slice(1, 3);
+  const green = hexColor.slice(3, 5);
+  const blue = hexColor.slice(5, 7);
+  return `&H00${blue}${green}${red}&`;
+}
+
+function highlightedLine(
+  words: TimedWord[],
+  activeIndex: number,
+  highlightColor: string,
+): string {
   return words
     .map((word, index) => {
       const text = escapeAssText(word.text);
       if (index !== activeIndex) return text;
-      return `{\\c&H006AFFD4&\\b1\\fscx108\\fscy108}${text}{\\rLowerThird}`;
+      return `{\\c${hexToAssColor(highlightColor)}\\b1\\fscx108\\fscy108}${text}{\\rLowerThird}`;
     })
     .join(" ");
 }
@@ -170,9 +247,18 @@ function highlightedLine(words: TimedWord[], activeIndex: number): string {
 export function buildAssSubtitles(
   words: TimedWord[],
   fontFamily: VideoExportFont,
+  aspectRatio: VideoAspectRatio = "original",
+  highlightColor = DEFAULT_SUBTITLE_HIGHLIGHT_COLOR,
+  subtitleTreatment: SubtitleTreatment = "background",
 ): string {
   const events: string[] = [];
-  const pages = captionPages(words);
+  const pages = captionPages(words, aspectRatio);
+  const vertical = aspectRatio === "vertical";
+  const playResX = vertical ? 1080 : 1920;
+  const playResY = vertical ? 1920 : 1080;
+  const fontSize = vertical ? 64 : 60;
+  const horizontalMargin = vertical ? 72 : 76;
+  const verticalMargin = vertical ? 270 : 92;
   for (let pageIndex = 0; pageIndex < pages.length; pageIndex += 1) {
     const page = pages[pageIndex];
     for (let index = 0; index < page.length; index += 1) {
@@ -196,23 +282,28 @@ export function buildAssSubtitles(
           "0",
           "0",
           "",
-          highlightedLine(page, index),
+          highlightedLine(page, index, highlightColor),
         ].join(","),
       );
     }
   }
 
+  const borderStyle = subtitleTreatment === "outline" ? 1 : 3;
+  const outlineWidth = subtitleTreatment === "outline" ? 4 : 11;
+  const shadowDepth = subtitleTreatment === "outline" ? 1 : 0;
+  const backColour = subtitleTreatment === "outline" ? "&H00000000" : "&H90060809";
+
   return [
     "[Script Info]",
     "ScriptType: v4.00+",
-    "PlayResX: 1920",
-    "PlayResY: 1080",
+    `PlayResX: ${playResX}`,
+    `PlayResY: ${playResY}`,
     "ScaledBorderAndShadow: yes",
     "WrapStyle: 2",
     "",
     "[V4+ Styles]",
     "Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding",
-    `Style: LowerThird,${fontFamily},60,&H00F6F8F5,&H00F6F8F5,&H00101010,&H90060809,-1,0,0,0,100,100,0.8,0,3,11,0,2,76,76,92,1`,
+    `Style: LowerThird,${fontFamily},${fontSize},&H00F6F8F5,&H00F6F8F5,&H00101010,${backColour},-1,0,0,0,100,100,0.8,0,${borderStyle},${outlineWidth},${shadowDepth},2,${horizontalMargin},${horizontalMargin},${verticalMargin},1`,
     "",
     "[Events]",
     "Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text",

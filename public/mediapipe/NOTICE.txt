@@ -1,0 +1,8 @@
+MediaPipe Tasks Vision runtime and Selfie Segmentation model
+Copyright 2023 Google LLC
+
+Licensed under the Apache License, Version 2.0.
+https://www.apache.org/licenses/LICENSE-2.0
+
+The bundled model performs human/background segmentation locally on the
+user's device. Source project: https://github.com/google-ai-edge/mediapipe

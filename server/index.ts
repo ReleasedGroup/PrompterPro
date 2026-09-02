@@ -102,6 +102,7 @@ app.post(
           "aac",
           "-b:a",
           "192k",
+          "-shortest",
           "-movflags",
           "+faststart",
           outputPath,
@@ -170,11 +171,15 @@ app.post(
       path.join(tmpdir(), "prompter-subtitle-export-"),
     );
     const inputPath = path.join(workingDirectory, "take.recording");
+    const audioPath = path.join(workingDirectory, "take-audio.recording");
     const subtitlePath = path.join(workingDirectory, "captions.ass");
     const outputPath = path.join(workingDirectory, "take-rendered.mp4");
 
     try {
       const writes = [writeFile(inputPath, parsedExport.recording)];
+      if (parsedExport.audioRecording) {
+        writes.push(writeFile(audioPath, parsedExport.audioRecording));
+      }
       if (parsedExport.request.mode === "subtitles") {
         writes.push(
           writeFile(
@@ -182,6 +187,9 @@ app.post(
             buildAssSubtitles(
               parsedExport.request.words,
               parsedExport.request.fontFamily,
+              parsedExport.request.aspectRatio,
+              parsedExport.request.highlightColor,
+              parsedExport.request.subtitleTreatment,
             ),
             "utf8",
           ),
@@ -198,23 +206,25 @@ app.post(
           "-y",
           "-i",
           inputPath,
+          ...(parsedExport.audioRecording ? ["-i", audioPath] : []),
           "-map",
           "0:v:0",
           "-map",
-          "0:a:0",
+          parsedExport.audioRecording ? "1:a:0" : "0:a:0",
           ...(videoFilter ? ["-vf", videoFilter] : []),
           "-c:v",
           "libx264",
           "-preset",
-          "veryfast",
+          parsedExport.request.preserveQuality ? "medium" : "veryfast",
           "-crf",
-          "20",
+          parsedExport.request.preserveQuality ? "17" : "20",
           "-pix_fmt",
           "yuv420p",
           "-c:a",
           "aac",
           "-b:a",
           "192k",
+          "-shortest",
           "-movflags",
           "+faststart",
           outputPath,

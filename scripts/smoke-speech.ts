@@ -25,7 +25,9 @@ interface SpeechMessage {
 const require = createRequire(import.meta.url);
 const sherpa = require("sherpa-onnx-node") as SherpaModule;
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
-const rootDirectory = path.resolve(scriptDirectory, "..");
+const rootDirectory = process.env.PROMPTER_ROOT_DIR
+  ? path.resolve(process.env.PROMPTER_ROOT_DIR)
+  : path.resolve(scriptDirectory, "..");
 const modelDirectory = path.join(
   rootDirectory,
   ".models",

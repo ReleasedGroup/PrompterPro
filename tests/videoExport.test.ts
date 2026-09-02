@@ -10,6 +10,7 @@ import {
 import {
   buildAssSubtitles,
   buildVideoFilter,
+  hexToAssColor,
   parseCaptionExportBody,
 } from "../server/subtitleExport";
 
@@ -56,9 +57,13 @@ describe("video subtitle export", () => {
       new Blob(["recording"], { type: "video/mp4" }),
       {
         mode: "subtitles",
+        aspectRatio: "landscape",
+        highlightColor: "#FF3366",
+        subtitleTreatment: "outline",
         fontFamily: "Georgia",
         words,
         fadeToBlack: true,
+        preserveQuality: true,
         videoDurationMs: 3_000,
       },
     );
@@ -67,9 +72,38 @@ describe("video subtitle export", () => {
     );
 
     expect(parsed.request.fontFamily).toBe("Georgia");
+    expect(parsed.request.aspectRatio).toBe("landscape");
+    expect(parsed.request.highlightColor).toBe("#FF3366");
+    expect(parsed.request.subtitleTreatment).toBe("outline");
     expect(parsed.request.words).toEqual(words);
     expect(parsed.request.fadeToBlack).toBe(true);
+    expect(parsed.request.preserveQuality).toBe(true);
     expect(parsed.recording.toString()).toBe("recording");
+    expect(parsed.audioRecording).toBeNull();
+  });
+
+  it("keeps separately rendered video and original audio tracks distinct", async () => {
+    const body = makeCaptionExportBody(
+      new Blob(["rendered-video"], { type: "video/x-ivf" }),
+      {
+        mode: "clean",
+        aspectRatio: "vertical",
+        highlightColor: "#D4FF6A",
+        subtitleTreatment: "background",
+        fontFamily: "Arial",
+        words: [],
+        fadeToBlack: false,
+        preserveQuality: true,
+        videoDurationMs: 3_000,
+      },
+      new Blob(["original-audio"], { type: "video/mp4" }),
+    );
+    const parsed = parseCaptionExportBody(
+      Buffer.from(await body.arrayBuffer()),
+    );
+
+    expect(parsed.recording.toString()).toBe("rendered-video");
+    expect(parsed.audioRecording?.toString()).toBe("original-audio");
   });
 
   it("renders a single-line ASS lower third with spoken-word highlighting", () => {
@@ -82,23 +116,75 @@ describe("video subtitle export", () => {
     expect(subtitles).toContain("0:00:02.45");
   });
 
+  it("uses a portrait-safe caption canvas and shorter lines for Shorts", () => {
+    const portraitWords: TimedWord[] = [
+      ...words,
+      { text: "especially", startMs: 950, endMs: 1_150 },
+      { text: "vertically", startMs: 1_150, endMs: 1_400 },
+    ];
+    const subtitles = buildAssSubtitles(
+      portraitWords,
+      "Arial Black",
+      "vertical",
+    );
+    expect(captionPages(portraitWords, "vertical")).toHaveLength(2);
+    expect(subtitles).toContain("PlayResX: 1080");
+    expect(subtitles).toContain("PlayResY: 1920");
+    expect(subtitles).toContain("Style: LowerThird,Arial Black,64");
+  });
+
+  it("renders a custom highlight colour with an outlined text treatment", () => {
+    const subtitles = buildAssSubtitles(
+      words,
+      "Arial Black",
+      "landscape",
+      "#12ABEF",
+      "outline",
+    );
+    expect(hexToAssColor("#12ABEF")).toBe("&H00EFAB12&");
+    expect(subtitles).toContain("\\c&H00EFAB12&");
+    expect(subtitles).toContain("&H00000000,-1,0,0,0,100,100,0.8,0,1,4,1,2");
+  });
+
   it("builds optional subtitle and end-fade filters", () => {
     expect(buildVideoFilter({
       mode: "subtitles",
+      aspectRatio: "landscape",
+      highlightColor: "#D4FF6A",
+      subtitleTreatment: "background",
       fontFamily: "Arial",
       words,
       fadeToBlack: true,
+      preserveQuality: false,
       videoDurationMs: 12_500,
     })).toBe(
-      "ass=captions.ass,fade=t=out:st=11.500:d=1.000:color=black",
+      "scale=1920:1080:force_original_aspect_ratio=increase:flags=lanczos,crop=1920:1080,setsar=1,ass=captions.ass,fade=t=out:st=11.500:d=1.000:color=black",
     );
 
     expect(buildVideoFilter({
       mode: "clean",
+      aspectRatio: "original",
+      highlightColor: "#D4FF6A",
+      subtitleTreatment: "background",
       fontFamily: "Arial",
       words: [],
       fadeToBlack: false,
+      preserveQuality: false,
       videoDurationMs: 12_500,
     })).toBeNull();
+
+    expect(buildVideoFilter({
+      mode: "clean",
+      aspectRatio: "vertical",
+      highlightColor: "#D4FF6A",
+      subtitleTreatment: "outline",
+      fontFamily: "Arial",
+      words: [],
+      fadeToBlack: false,
+      preserveQuality: true,
+      videoDurationMs: 12_500,
+    })).toBe(
+      "scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,crop=1080:1920,setsar=1",
+    );
   });
 });
